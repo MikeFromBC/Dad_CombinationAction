@@ -114,6 +114,14 @@ void showValue(long stops) {
 }
 
 
+void updateStops(long* pStops, byte iCmd, long iStopValue) {
+  if (iCmd == MIDI_CMD_ACTIVATE)
+    *pStops |= iStopValue;
+    else
+    *pStops &= ((long) 0xffffffff - iStopValue);
+}
+
+
 void loop()
 {
   if(digitalRead(PIN_RAW_INPUT) == LOW)
@@ -166,33 +174,20 @@ void loop()
               switch (iDiv)
               {
                 case SWELL:
-                  if (iCmd == MIDI_CMD_ACTIVATE)
-                    swell |= iStopValue;
-                    else
-                    swell &= ((long) 0xffffffff - iStopValue);
-                    
+                  updateStops(&swell, iCmd, iStopValue);
                   break;
   
                 case GREAT:
-                  if (iCmd == MIDI_CMD_ACTIVATE)
-                    great |= iStopValue;
-                    else
-                    great &= ((long) 0xffffffff - iStopValue);
-                    break;
+                  updateStops(&great, iCmd, iStopValue);
+                  break;
                     
                 case PEDAL:
-                  if (iCmd == MIDI_CMD_ACTIVATE)
-                    pedal |= iStopValue;
-                    else
-                    pedal &= ((long) 0xffffffff - iStopValue);
-                    break;
+                  updateStops(&pedal, iCmd, iStopValue);
+                  break;
                     
                 case CHIOR:
-                  if (iCmd == MIDI_CMD_ACTIVATE)
-                    chior |= iStopValue;
-                    else
-                    chior &= ((long) 0xffffffff - iStopValue);
-                    break;
+                  updateStops(&chior, iCmd, iStopValue);
+                  break;
               }
 
             SoftSerial.print("Swell:  ");
