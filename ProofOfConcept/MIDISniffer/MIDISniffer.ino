@@ -46,6 +46,10 @@ Distributed as-is; no warranty is given.
 #define PIN_POT_A0 0
 #define PIN_POT_A1 1
 
+#define MIDI_CMD_ACTIVATE    73
+#define MIDI_CMD_DEACTIVATE  74
+
+
 static const uint16_t DEBOUNCE_COUNT = 50;
 
 // Need to use soft SoftSerial, so we can report what's happening
@@ -59,17 +63,28 @@ SoftwareSerial SoftSerial(50, 51);
 */
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial, MIDI);
 
+#define MaxStops 30
+typedef byte TMem[MaxStops];
+
+#define PEDAL 2
+#define GREAT 3
+#define SWELL 4
+#define CHIOR 5 
+
+#define STOP_INACTIVE     0
+#define STOP_ACTIVE       1
+#define INVALIDSTOPSTATE  2
+
+TMem swell;
+TMem great;
+TMem pedal;
+TMem chior;
+
 void setup()
 {
-  // put your setup code here, to run
-  once:
-
   // LED outputs
   SoftSerial.begin(19200);
   SoftSerial.println("Setting up");
-
-  // do I need to init the soft SoftSerial port?
-  // No - MIDI Lib will do it.
 
   // We want to receive messages on all channels
   MIDI.begin(MIDI_CHANNEL_OMNI);
@@ -78,15 +93,22 @@ void setup()
   // so the sniffer can be dropped inline when things misbehave.
   MIDI.turnThruOn();
 
-  pinMode(PIN_RAW_INPUT, INPUT_PULLUP);
+  for (int i=0; i<MaxStops; i++)
+  {
+    swell[i]=0;
+    great[i]=0;
+    chior[i]=0;
+    pedal[i]=0;
+  }
 
+  pinMode(PIN_RAW_INPUT, INPUT_PULLUP);
 }
+
 
 void loop()
 {
   static uint8_t  ticks = 0;
   static uint8_t  old_ticks = 0;
-
 
   // put your main code here, to run repeatedly:
 
@@ -114,192 +136,82 @@ void loop()
   else
   {
     // turn the crank...
-    if (  MIDI.read())
+    if (MIDI.read())
     {
       switch (MIDI.getType())
       {
-        case midi::NoteOff :
-          {
-            SoftSerial.print("NoteOff, chan: ");
-            SoftSerial.print(MIDI.getChannel());
-            SoftSerial.print(" Note#: ");
-            SoftSerial.print(MIDI.getData1());
-            SoftSerial.print(" Vel#: ");
-            SoftSerial.println(MIDI.getData2());
-          }
-          break;
-        case midi::NoteOn :
-          {
-            uint8_t vel;
-
-            SoftSerial.print("NoteOn, chan: ");
-            SoftSerial.print(MIDI.getChannel());
-            SoftSerial.print(" Note#: ");
-            SoftSerial.print(MIDI.getData1());
-            SoftSerial.print(" Vel#: ");
-            vel = MIDI.getData2();
-            SoftSerial.print(vel);
-            if (vel == 0)
-            {
-              SoftSerial.print(" *Implied off*");
-            }
-            SoftSerial.println();
-          }
-          break;
-        case midi::AfterTouchPoly :
-          {
-            SoftSerial.print("PolyAT, chan: ");
-            SoftSerial.print(MIDI.getChannel());
-            SoftSerial.print(" Note#: ");
-            SoftSerial.print(MIDI.getData1());
-            SoftSerial.print(" AT: ");
-            SoftSerial.println(MIDI.getData2());
-          }
-          break;
         case midi::ControlChange :
           {
-            SoftSerial.print("Controller, chan: ");
-            SoftSerial.print(MIDI.getChannel());
-            SoftSerial.print(" Controller#: ");
-            SoftSerial.print(MIDI.getData1());
-            SoftSerial.print(" Value: ");
-            SoftSerial.println(MIDI.getData2());
-          }
-          break;
-        case midi::ProgramChange :
-          {
-            SoftSerial.print("PropChange, chan: ");
-            SoftSerial.print(MIDI.getChannel());
-            SoftSerial.print(" program: ");
-            SoftSerial.println(MIDI.getData1());
-          }
-          break;
-        case midi::AfterTouchChannel :
-          {
-            SoftSerial.print("ChanAT, chan: ");
-            SoftSerial.print(MIDI.getChannel());
-            SoftSerial.print(" program: ");
-            SoftSerial.println(MIDI.getData1());
+//            SoftSerial.print("Controller, chan: ");
+//            SoftSerial.print(MIDI.getChannel());
+//            SoftSerial.print(" Controller#: ");
+//            SoftSerial.print(MIDI.getData1());
+//            SoftSerial.print(" Value: ");
+//            SoftSerial.println(MIDI.getData2());
 
-          }
-          break;
-        case midi::PitchBend :
-          {
-            uint16_t val;
+            byte iStopState;
+            byte iCmd = MIDI.getData1();
+            
+          SoftSerial.println(iCmd);              
 
-            SoftSerial.print("Bend, chan: ");
-            SoftSerial.print(MIDI.getChannel());
+            switch (iCmd) {
+              case MIDI_CMD_ACTIVATE:
+          SoftSerial.println("act");              
+                iStopState=STOP_ACTIVE;
+                break;
 
-            // concatenate MSB,LSB
-            // LSB is Data1
-            val = MIDI.getData2() << 7 | MIDI.getData1();
+              case MIDI_CMD_DEACTIVATE:
+          SoftSerial.println("deact");              
+                iStopState=STOP_INACTIVE;
+                break;
 
-            SoftSerial.print(" value: 0x");
-            SoftSerial.println(val, HEX);
-
-
-          }
-          break;
-        case midi::SystemExclusive :
-          {
-            // Sysex is special.
-            // could contain very long data...
-            // the data bytes form the length of the message,
-            // with data contained in array member
-            uint16_t length;
-            const uint8_t  * data_p;
-
-            SoftSerial.print("SysEx, chan: ");
-            SoftSerial.print(MIDI.getChannel());
-            length = MIDI.getSysExArrayLength();
-
-            SoftSerial.print(" Data: 0x");
-            data_p = MIDI.getSysExArray();
-            for (uint16_t idx = 0; idx < length; idx++)
-            {
-              SoftSerial.print(data_p[idx], HEX);
-              SoftSerial.print(" 0x");
+              default: iStopState=INVALIDSTOPSTATE;
             }
-            SoftSerial.println();
-          }
-          break;
-        case midi::TimeCodeQuarterFrame :
-          {
-            // MTC is also special...
-            // 1 byte of data carries 3 bits of field info 
-            //      and 4 bits of data (sent as MS and LS nybbles)
-            // It takes 2 messages to send each TC field,
-          
-            SoftSerial.print("TC 1/4Frame, type: ");
-            SoftSerial.print(MIDI.getData1() >> 4);
-            SoftSerial.print("Data nybble: ");
-            SoftSerial.println(MIDI.getData1() & 0x0f);
-          }
-          break;
-        case midi::SongPosition :
-          {
-            // Data is the number of elapsed sixteenth notes into the song, set as 
-            // 7 seven-bit values, LSB, then MSB.
-          
-            SoftSerial.print("SongPosition ");
-            SoftSerial.println(MIDI.getData2() << 7 | MIDI.getData1());
-          }
-          break;
-        case midi::SongSelect :
-          {
-            SoftSerial.print("SongSelect ");
-            SoftSerial.println(MIDI.getData1());
-          }
-          break;
-        case midi::TuneRequest :
-          {
-            SoftSerial.println("Tune Request");
-          }
-          break;
-        case midi::Clock :
-          {
-            ticks++;
 
-            SoftSerial.print("Clock ");
-            SoftSerial.println(ticks);
-          }
-          break;
-        case midi::Start :
-          {
-            ticks = 0;
-            SoftSerial.println("Starting");
-          }
-          break;
-        case midi::Continue :
-          {
-            ticks = old_ticks;
-            SoftSerial.println("continuing");
-          }
-          break;
-        case midi::Stop :
-          {
-            old_ticks = ticks;
-            SoftSerial.println("Stopping");
-          }
-          break;
-        case midi::ActiveSensing :
-          {
-            SoftSerial.println("ActiveSense");
-          }
-          break;
-        case midi::SystemReset :
-          {
-            SoftSerial.println("Stopping");
-          }
-          break;
-        case midi::InvalidType :
-          {
-            SoftSerial.println("Invalid Type");
-          }
-          break;
-        default:
-          {
-            SoftSerial.println();
+            int iDiv = MIDI.getChannel();
+            int iStopNum = MIDI.getData2() - 1;
+            
+            if (iStopState != INVALIDSTOPSTATE)
+              switch (iDiv)
+              {
+                case SWELL:
+                  swell[iStopNum] = iStopState;
+                  break;
+  
+                case GREAT:
+                  great[iStopNum] = iStopState;
+                  break;
+                    
+                case PEDAL:
+                  pedal[iStopNum] = iStopState;
+                  break;
+                    
+                case CHIOR:
+                  chior[iStopNum] = iStopState;
+                  break;
+              }
+
+            SoftSerial.print("Swell:  ");
+            for (int i=0; i<MaxStops; i++) {
+              SoftSerial.print(swell[i]);              
+            }
+            SoftSerial.println();              
+            SoftSerial.print("Great:  ");
+            for (int i=0; i<MaxStops; i++) {
+              SoftSerial.print(great[i]);              
+            }
+            SoftSerial.println();              
+            SoftSerial.print("Chior:  ");
+            for (int i=0; i<MaxStops; i++) {
+              SoftSerial.print(chior[i]);              
+            }
+            SoftSerial.println();              
+            SoftSerial.print("Pedal:  ");
+            for (int i=0; i<MaxStops; i++) {
+              SoftSerial.print(pedal[i]);              
+            }
+            SoftSerial.println();              
+              
           }
           break;
       }
@@ -307,5 +219,8 @@ void loop()
   }
 }
 
-
+//Swell:  111111111111111000000000000000
+//Great:  111111111000000000000000000000
+//Chior:  111111111111000000000000000000
+//Pedal:  111111111000000000000000000000
 
