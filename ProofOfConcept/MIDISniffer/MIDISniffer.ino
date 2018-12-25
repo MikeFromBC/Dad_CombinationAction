@@ -63,8 +63,7 @@ SoftwareSerial SoftSerial(50, 51);
 */
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial, MIDI);
 
-#define MaxStops 30
-typedef byte TMem[MaxStops];
+#define MAX_STOPS 32
 
 #define PEDAL 2
 #define GREAT 3
@@ -75,10 +74,10 @@ typedef byte TMem[MaxStops];
 #define STOP_ACTIVE       1
 #define INVALIDSTOPSTATE  2
 
-TMem swell;
-TMem great;
-TMem pedal;
-TMem chior;
+long swell;
+long great;
+long pedal;
+long chior;
 
 void setup()
 {
@@ -93,15 +92,25 @@ void setup()
   // so the sniffer can be dropped inline when things misbehave.
   MIDI.turnThruOn();
 
-  for (int i=0; i<MaxStops; i++)
-  {
-    swell[i]=0;
-    great[i]=0;
-    chior[i]=0;
-    pedal[i]=0;
-  }
+  swell=0;
+  great=0;
+  chior=0;
+  pedal=0;
 
   pinMode(PIN_RAW_INPUT, INPUT_PULLUP);
+}
+
+
+void showValue(long stops) {
+  for (int i=0; i<MAX_STOPS; i++) {
+    long iCurrValue = (long) 1 << i;
+    if (stops & iCurrValue)
+      SoftSerial.print(1);
+      else
+      SoftSerial.print(0);              
+  }
+
+  SoftSerial.println();                
 }
 
 
@@ -152,16 +161,12 @@ void loop()
             byte iStopState;
             byte iCmd = MIDI.getData1();
             
-          SoftSerial.println(iCmd);              
-
             switch (iCmd) {
               case MIDI_CMD_ACTIVATE:
-          SoftSerial.println("act");              
                 iStopState=STOP_ACTIVE;
                 break;
 
               case MIDI_CMD_DEACTIVATE:
-          SoftSerial.println("deact");              
                 iStopState=STOP_INACTIVE;
                 break;
 
@@ -170,48 +175,55 @@ void loop()
 
             int iDiv = MIDI.getChannel();
             int iStopNum = MIDI.getData2() - 1;
+            long iStopValue = (long) 1 << iStopNum;
             
+//            SoftSerial.print("iStopNum  " );              
+//            SoftSerial.println(iStopNum);              
+//            SoftSerial.print("iStopValue  " );              
+//            SoftSerial.println(iStopValue);              
+
             if (iStopState != INVALIDSTOPSTATE)
               switch (iDiv)
               {
                 case SWELL:
-                  swell[iStopNum] = iStopState;
+                  if (iCmd == MIDI_CMD_ACTIVATE)
+                    swell |= iStopValue;
+                    else
+                    swell &= ((long) 0xffffffff - iStopValue);
+                    
                   break;
   
                 case GREAT:
-                  great[iStopNum] = iStopState;
-                  break;
+                  if (iCmd == MIDI_CMD_ACTIVATE)
+                    great |= iStopValue;
+                    else
+                    great &= ((long) 0xffffffff - iStopValue);
+                    break;
                     
                 case PEDAL:
-                  pedal[iStopNum] = iStopState;
-                  break;
+                  if (iCmd == MIDI_CMD_ACTIVATE)
+                    pedal |= iStopValue;
+                    else
+                    pedal &= ((long) 0xffffffff - iStopValue);
+                    break;
                     
                 case CHIOR:
-                  chior[iStopNum] = iStopState;
-                  break;
+                  if (iCmd == MIDI_CMD_ACTIVATE)
+                    chior |= iStopValue;
+                    else
+                    chior &= ((long) 0xffffffff - iStopValue);
+                    break;
               }
 
             SoftSerial.print("Swell:  ");
-            for (int i=0; i<MaxStops; i++) {
-              SoftSerial.print(swell[i]);              
-            }
-            SoftSerial.println();              
+            showValue(swell);
             SoftSerial.print("Great:  ");
-            for (int i=0; i<MaxStops; i++) {
-              SoftSerial.print(great[i]);              
-            }
-            SoftSerial.println();              
+            showValue(great);
             SoftSerial.print("Chior:  ");
-            for (int i=0; i<MaxStops; i++) {
-              SoftSerial.print(chior[i]);              
-            }
-            SoftSerial.println();              
+            showValue(chior);
             SoftSerial.print("Pedal:  ");
-            for (int i=0; i<MaxStops; i++) {
-              SoftSerial.print(pedal[i]);              
-            }
+            showValue(pedal);
             SoftSerial.println();              
-              
           }
           break;
       }
