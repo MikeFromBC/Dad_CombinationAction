@@ -116,31 +116,11 @@ void showValue(long stops) {
 
 void loop()
 {
-  static uint8_t  ticks = 0;
-  static uint8_t  old_ticks = 0;
-
-  // put your main code here, to run repeatedly:
-
   if(digitalRead(PIN_RAW_INPUT) == LOW)
   {
-    // If you hold button D2 on the shield, we'll print
-    // the raw hex values from the MIDI input.
-    //
-    // This can be useful if you need to troubleshoot issues with
-    // running status
-
     byte input;
     if(SoftSerial.available() != 0)
-    {
       input = SoftSerial.read();
-    
-      if(input & 0x80)
-      {
-        SoftSerial.println();
-      }
-      SoftSerial.print(input, HEX);
-      SoftSerial.print(' ');
-    }
   }
   else
   {
