@@ -38,7 +38,7 @@ Distributed as-is; no warranty is given.
 
 
 #include <SoftwareSerial.h>
-#include <MsTimer2.h>
+//#include <MsTimer2.h>
 #include <MIDI.h>
 
 #define PIN_RAW_INPUT 2
