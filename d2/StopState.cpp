@@ -1,5 +1,10 @@
+#include <SoftwareSerial.h>
+
+//#include "Types.h"
 #include "StopState.h"
-#include "Types.h"
+#include "Utils.h"
+
+extern SoftwareSerial* debugSerial;
 
 StopState::StopState() {
 	clear();
@@ -14,18 +19,18 @@ void StopState::clear() {
 
 
 void StopState::debug_ShowAllStopStates(char* sCaller) {
-	SoftSerial.println(sCaller);
+	debugSerial->println(sCaller);
 	debug_ShowStopState("great", great);
 	debug_ShowStopState("swell", swell);
 	debug_ShowStopState("chior", chior);
 	debug_ShowStopState("pedal", pedal);
-    SoftSerial.println();              
+  debugSerial->println();              
 }
 
 
 void StopState::debug_ShowStopState(char* sDiv, unsigned long iStops) {
-	SoftSerial.print(sDiv);
-	SoftSerial.print("  ");
+	debugSerial->print(sDiv);
+	debugSerial->print("  ");
 	debug_ShowValue(iStops);
 }
 
@@ -42,7 +47,7 @@ void StopState::setStop(unsigned long* piDivStops, int iStop, bool bOn) {
   if (bOn)
     *piDivStops |= iStopValue;
     else
-	*piDivStops &= ((unsigned long) 0xffffffff - iStopValue);
+  	*piDivStops &= ((unsigned long) 0xffffffff - iStopValue);
 }
 
 

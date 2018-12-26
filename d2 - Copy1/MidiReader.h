@@ -5,6 +5,8 @@ class MidiReader
 {
   private:
   public:
+    MidiReader();
+    void readMessages();
 };
 
 #endif // __MIDIREADER_H__
