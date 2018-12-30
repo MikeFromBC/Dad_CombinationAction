@@ -18,6 +18,8 @@ StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBi
   pinMode(iClockPortBit, OUTPUT);
   pinMode(iDataPortBit, OUTPUT);
 
+  // test when optimization is active
+/*
   if (calcActivation(1, 1)!=0) debugSerial->println("test failed for ACTIVATION SKIP");
   if (calcActivation(1, 0)!=1) debugSerial->println("test failed for NEW ACTIVATION");
   if (calcActivation(0, 1)!=0) debugSerial->println("test failed for DEACTIVATION 1");
@@ -29,6 +31,7 @@ StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBi
   if (calcDeactivation(1, 1)!=0) debugSerial->println("test failed for DEACTIVATION 4");
 
   debugSerial->println("test completed!");
+  */
 }
 
 
