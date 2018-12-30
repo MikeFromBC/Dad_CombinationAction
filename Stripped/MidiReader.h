@@ -6,10 +6,9 @@
 class MidiReader
 {
   private:
+    StopState* stopState;
   public:
-    StopState stopState;
-    
-    MidiReader();
+    MidiReader(StopState* _stopState);
     void readMessages();
 };
 

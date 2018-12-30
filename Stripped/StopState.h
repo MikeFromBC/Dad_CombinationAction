@@ -4,15 +4,15 @@
 class StopState
 {
   private:
-    unsigned long swell;
-    unsigned long great;
-    unsigned long chior;
-    unsigned long pedal;
-    
     unsigned long stopValue(int iStop);
 	  void toggleStop(unsigned long* piDivStops, int iStop);
 	  void setStop(unsigned long* piDivStops, int iStop, bool bOn);
   public:
+    unsigned long swell;
+    unsigned long great;
+    unsigned long chior;
+    unsigned long pedal;
+
     StopState();
     void clear();
   
