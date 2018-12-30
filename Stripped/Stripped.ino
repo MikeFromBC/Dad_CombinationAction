@@ -40,7 +40,9 @@ void loop() {
   unsigned long iGreat = 0;
   unsigned long iChior = 0;
 
-/*
+//while (1)
+//  midiReader->readMessages();
+
   while (1) {
     midiReader->readMessages();
   
@@ -53,7 +55,7 @@ void loop() {
     {
       driver_GT_CH->send(iGreat, iChior);
     }
-  }  */
+  }  
 
   driver_GT_CH->send(1, 0,   // GT
                      1, 0);  // CH

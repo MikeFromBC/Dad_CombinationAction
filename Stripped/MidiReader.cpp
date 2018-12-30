@@ -37,13 +37,13 @@ void MidiReader::readMessages() {
     switch (MIDI.getType())
     {
       case midi::ControlChange:
-        {
+        {  /*
           debugSerial->print("Controller, chan: ");
           debugSerial->print(MIDI.getChannel());
           debugSerial->print(" Controller#: ");
           debugSerial->print(MIDI.getData1());
           debugSerial->print(" Value: ");
-          debugSerial->println(MIDI.getData2());
+          debugSerial->println(MIDI.getData2());  */
 
           byte iCmd = MIDI.getData1();
           bool bOn = iCmd == MIDI_CMD_ACTIVATE;
