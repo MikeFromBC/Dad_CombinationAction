@@ -43,6 +43,7 @@ void loop() {
 //while (1)
 //  midiReader->readMessages();
 
+/*
   while (1) {
     midiReader->readMessages();
   
@@ -55,13 +56,45 @@ void loop() {
     {
       driver_GT_CH->send(iGreat, iChior);
     }
-  }  
+  } */ 
 
-  driver_GT_CH->send(1, 0,   // GT
-                     1, 0);  // CH
 
+while(1) {
+  driver_GT_CH->setAllActive();
+  delay(200);
+  driver_GT_CH->setAllOff();
+  delay(3000);
+
+  driver_GT_CH->setAllInactive();
+  delay(200);
+  driver_GT_CH->setAllOff();
+  delay(3000);
+}
+
+
+
+
+while(1) {
+  driver_GT_CH->send((unsigned long) 0xffffffff, 0,   // GT
+                     (unsigned long) 0xffffffff, 0);  // CH
+                     
+  delay(2000);
+
+  driver_GT_CH->send(0, 0,   // GT
+                     0, 0);  // CH
+                     
+  delay(2000);
+}
+
+while(1) {
+int iStop=1;
+for (int i=0; i<20; i++) {
+  driver_GT_CH->send(iStop, 0,   // GT
+                     iStop, 0);  // CH
+  iStop=iStop<<1;
   delay(1000);
-  
+}
+}
   driver_GT_CH->send(2, 0,   // GT
                      2, 0);  // CH
                      
