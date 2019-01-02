@@ -144,7 +144,7 @@ void StopDriver::setAllOff() {
 }
 
 
-void StopDriver::setAllActive() {
+void StopDriver::testSetAllActive() {
   // lock output
   digitalWrite(iStrobePortBit, LOW); 
 
@@ -166,7 +166,7 @@ void StopDriver::setAllActive() {
 }
 
 
-void StopDriver::setAllInactive() {
+void StopDriver::testSetAllInactive() {
   // lock output
   digitalWrite(iStrobePortBit, LOW); 
 

@@ -20,8 +20,8 @@ class StopDriver
     void send(unsigned long iDiv1Stops, unsigned long iDiv1StopState, unsigned long iDiv2Stops, unsigned long iDiv2StopState);
 
     void setAllOff();
-    void setAllActive();
-    void setAllInactive();
+    void testSetAllActive();
+    void testSetAllInactive();
 };
 
 #endif __STOPDRIVER_H__

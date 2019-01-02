@@ -58,18 +58,19 @@ void loop() {
     }
   } */ 
 
-
+/*
 while(1) {
-  driver_GT_CH->setAllActive();
-  delay(200);
+  driver_GT_CH->testSetAllActive();
+  delay(500);
   driver_GT_CH->setAllOff();
-  delay(3000);
+  delay(500);
 
-  driver_GT_CH->setAllInactive();
-  delay(200);
+  driver_GT_CH->test_SetAllInactive();
+  delay(500);
   driver_GT_CH->setAllOff();
-  delay(3000);
+  delay(500);
 }
+*/
 
 
 
