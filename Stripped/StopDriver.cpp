@@ -58,29 +58,29 @@ unsigned long StopDriver::calcDeactivation(unsigned long iDivStops, unsigned lon
 }
 
 
-void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState, byte iSkipUpperBits) {
+void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState, byte _iSkipUpperBits) {
 //  Serial.println(iDivStops);
 
   // always load MSB...LSB
   const unsigned long MASK = 0x80000000;
 
-debugSerial->print("INPUT ");
-debugSerial->print(iDivStops);
+//debugSerial->print("INPUT ");
+//debugSerial->print(iDivStops, HEX);
 
   unsigned long iActivate = calcActivation(iDivStops, iDivStopState);
-  unsigned long iDeactivate = calcDeactivation(iDivStops, iDivStopState) & 3;
+  unsigned long iDeactivate = calcDeactivation(iDivStops, iDivStopState);
 
-debugSerial->print("   ACT ");
-debugSerial->print(iActivate);
-debugSerial->print("   DEACT ");
-debugSerial->println(iDeactivate);
+//debugSerial->print("   ACT ");
+//debugSerial->print(iActivate, HEX);
+//debugSerial->print("   DEACT ");
+//debugSerial->println(iDeactivate, HEX);
 
   if (iActivate & iDeactivate > 0) {
       Serial.println("OH NO!  WE'RE TRYING TO ACTIVATE AND DEACTIVATE AT THE SAME TIME!  Turning off deactivation to avoid serious problems.");
       iDeactivate = 0;
   }
 
-  int iBitsAlreadySent = 0;
+  int iBitsAlreadyShiftedOut = 0;
 
   // highest bits go first
   for (int i=MAX_DIV_STOPS - 1; i>=0; i--) 
@@ -88,9 +88,7 @@ debugSerial->println(iDeactivate);
 //    Serial.print(result);
 //    Serial.println(iDivStops);
 
-    iBitsAlreadySent++;
-    
-    if (1) {  //(iBitsAlreadySent > iSkipUpperBits) {
+    if (iBitsAlreadyShiftedOut >= _iSkipUpperBits) {
       // possibly deactivate stop; deactivate bit loaded first
       if (iDeactivate & MASK) 
         // de-energise
@@ -102,22 +100,26 @@ debugSerial->println(iDeactivate);
       clockOutput();
   
       // possibly activate stop; activate bit loaded last
-      if (iActivate & MASK) 
+      if (iActivate & MASK) {
         // energise
         digitalWrite(iDataPortBit, HIGH); 
-        else
+        debugSerial->print("1");
+      } else {
         // de-energise
         digitalWrite(iDataPortBit, LOW); 
-  
+        debugSerial->print("0");
+      }
       clockOutput();
     }
   
+    iBitsAlreadyShiftedOut++;
+    
     // always load MSB...LSB
     iActivate=iActivate << 1;
     iDeactivate=iDeactivate << 1;
   }
 
-//  Serial.println();
+  debugSerial->println();
 //  Serial.println("end");
 }
 

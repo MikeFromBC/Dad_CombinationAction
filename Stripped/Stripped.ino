@@ -31,8 +31,10 @@ void setup() {
   
   stopState = new StopState();
   midiReader = new MidiReader(stopState);
-  
-  driver_GT_CH = new StopDriver(32, 33, 34, 20);  // CH starts at pin 41 (20 * 2 is the last output for the lower division assignment)
+
+  // 2nd division starts at pin 41 (64 pins if all used - 40 pins allocated) / 2 = 12 upper bits to skip on lower value provided last)
+  // same offset for both boards.
+  driver_GT_CH = new StopDriver(32, 33, 34, 12);  
   //driver_SW_PD = new StopDriver(20);
 }
 
@@ -72,44 +74,55 @@ while(1) {
 }
 */
 
+//debugSerial->print("   DEACT ");
+//unsigned long iDivStops = 3;
+//unsigned long i = driver_GT_CH->calcDeactivation(iDivStops, 0);
+//debugSerial->println(i, HEX);
+//
+//while (1) ;
 
 
 
 while(1) {
+  debugSerial->print("PART ON:   ");
+  //2048, 1
   driver_GT_CH->send((unsigned long) 0xffffffff, 0,   // GT
                      (unsigned long) 0xffffffff, 0);  // CH
                      
-  delay(2000);
+  delay(1000);
 
+  debugSerial->print("PART OFF:  ");
   driver_GT_CH->send(0, 0,   // GT
                      0, 0);  // CH
                      
-  delay(2000);
+  delay(1000);
 }
 
 while(1) {
-int iStop=1;
-for (int i=0; i<20; i++) {
-  driver_GT_CH->send(iStop, 0,   // GT
-                     iStop, 0);  // CH
-  iStop=iStop<<1;
-  delay(1000);
+  int iStop=1;
+  for (int i=0; i<20; i++) 
+  {
+    driver_GT_CH->send(iStop, 0,   // GT
+                       iStop, 0);  // CH
+    iStop=iStop<<1;
+    delay(1000);
+  }
 }
-}
-  driver_GT_CH->send(2, 0,   // GT
-                     2, 0);  // CH
-                     
-  delay(1000);
-  
-  driver_GT_CH->send(3, 0,   // GT
-                     3, 0);  // CH
 
-  delay(1000);
-  
-  driver_GT_CH->send(0, 0,   // GT
-                     0, 0);  // CH
-
-  delay(1000);
+//  driver_GT_CH->send(2, 0,   // GT
+//                     2, 0);  // CH
+//                     
+//  delay(1000);
+//  
+//  driver_GT_CH->send(3, 0,   // GT
+//                     3, 0);  // CH
+//
+//  delay(1000);
+//  
+//  driver_GT_CH->send(0, 0,   // GT
+//                     0, 0);  // CH
+//
+//  delay(1000);
 
   flashHeartbeatLED();
 }
