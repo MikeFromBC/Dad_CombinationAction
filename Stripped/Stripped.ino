@@ -46,21 +46,6 @@ void loop() {
 //  midiReader->readMessages();
 
 /*
-  while (1) {
-    midiReader->readMessages();
-  
-    if (digitalRead(MIDI_BOARD_SWITCH_PROG))
-    {
-      iGreat = stopState->great;
-      iChior = stopState->chior;
-    } else  
-    if (digitalRead(MIDI_BOARD_SWITCH_RECALL))
-    {
-      driver_GT_CH->send(iGreat, iChior);
-    }
-  } */ 
-
-/*
 while(1) {
   driver_GT_CH->testSetAllActive();
   delay(500);
@@ -82,7 +67,7 @@ while(1) {
 //while (1) ;
 
 
-
+// TEST:  operate all stops ON, OFF, repeat
 while(1) {
   debugSerial->print("PART ON:   ");
   //2048, 1
@@ -98,16 +83,43 @@ while(1) {
   delay(1000);
 }
 
-while(1) {
-  int iStop=1;
-  for (int i=0; i<20; i++) 
-  {
-    driver_GT_CH->send(iStop, 0,   // GT
-                       iStop, 0);  // CH
-    iStop=iStop<<1;
-    delay(1000);
-  }
-}
+// operate one stop at a time on all divisions at once
+//while(1) {
+//  int iStop=1;
+//  for (int i=0; i<20; i++) 
+//  {
+//    driver_GT_CH->send(iStop, 0,   // GT
+//                       iStop, 0);  // CH
+//    iStop=iStop<<1;
+//    delay(1000);
+//  }
+//}
+
+  while (1) {
+    midiReader->readMessages();
+  
+    if (!digitalRead(MIDI_BOARD_SWITCH_PROG))
+    {
+      debugSerial->println("program!");
+      iGreat = stopState->great;
+      iChior = stopState->chior;
+      debugSerial->print("Great:  ");
+      debugSerial->println(iGreat);
+      debugSerial->print("Chior:  ");
+      debugSerial->println(iChior);
+    } else  
+    if (!digitalRead(MIDI_BOARD_SWITCH_RECALL))
+    {
+      debugSerial->println("recall!");
+      debugSerial->print("Great:  ");
+      debugSerial->println(iGreat);
+      debugSerial->print("Chior:  ");
+      debugSerial->println(iChior);
+
+      driver_GT_CH->send(iGreat, 0,
+                         iChior, 0);
+    }
+  } 
 
 //  driver_GT_CH->send(2, 0,   // GT
 //                     2, 0);  // CH
