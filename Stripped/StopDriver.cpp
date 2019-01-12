@@ -6,8 +6,6 @@
 
 extern SoftwareSerial* debugSerial;
 
-#define STOP_DRIVE_TIME_MS  200
-
 StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBit, byte _iSkipUpperBits) {
   iStrobePortBit = _iStrobePortBit;
   iClockPortBit = _iClockPortBit;
@@ -199,10 +197,6 @@ void StopDriver::send(unsigned long iDiv1Stops, unsigned long iDiv1State, unsign
   
   // unlock output
   digitalWrite(iStrobePortBit, HIGH); 
-
-  delay(STOP_DRIVE_TIME_MS);
-
-  setAllOff();
 }
 
 
