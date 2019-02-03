@@ -60,7 +60,7 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
 //  Serial.println(iDivStops);
 
   // always load MSB...LSB
-  const unsigned long MASK = 0x80000000;
+  const unsigned long OUTPUT_MASK = 0x80000000;
 
 //debugSerial->print("INPUT ");
 //debugSerial->print(iDivStops, HEX);
@@ -88,7 +88,7 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
 
     if (iBitsAlreadyShiftedOut >= _iSkipUpperBits) {
       // possibly deactivate stop; deactivate bit loaded first
-      if (iDeactivate & MASK) 
+      if (iDeactivate & OUTPUT_MASK) 
         // de-energise
         digitalWrite(iDataPortBit, HIGH); 
         else
@@ -98,7 +98,7 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
       clockOutput();
   
       // possibly activate stop; activate bit loaded last
-      if (iActivate & MASK) {
+      if (iActivate & OUTPUT_MASK) {
         // energise
         digitalWrite(iDataPortBit, HIGH); 
         debugSerial->print("1");
