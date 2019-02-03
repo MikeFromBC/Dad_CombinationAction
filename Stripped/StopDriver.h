@@ -4,11 +4,11 @@
 class StopDriver
 {
   private:
-    int iStrobePortBit;
-    int iClockPortBit;
-    int iDataPortBit;
-    int iUpperDivBitOffset;
-    byte iSkipUpperBits;
+    int m_iStrobePortBit;
+    int m_iClockPortBit;
+    int m_iDataPortBit;
+    int m_iUpperDivBitOffset;
+    byte m_iSkipUpperBits;
 
     unsigned long calcActivation(unsigned long iDivStops, unsigned long iDivStopState);
     unsigned long calcDeactivation(unsigned long iDivStops, unsigned long iDivStopState);
