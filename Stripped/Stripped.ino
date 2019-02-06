@@ -36,6 +36,7 @@ void setup() {
 
   // 2nd division starts at pin 41 (64 pins if all used - 40 pins allocated) / 2 = 12 upper bits to skip on lower value provided last)
   // same offset for both boards.
+  // the "41" mentioned below is a port #
   driver_SW_PD = new StopDriver(41, 39, 37, 12);
   driver_CH_GT = new StopDriver(40, 38, 36, 12);  
 //  driver_SW_PD = new StopDriver(37, 39, 41, 12);

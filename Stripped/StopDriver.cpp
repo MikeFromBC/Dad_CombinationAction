@@ -6,7 +6,7 @@
 
 extern SoftwareSerial* debugSerial;
 
-StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBit, byte _iSkipUpperBits) {
+StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBit, byte _iSkipUpperBits, byte _iSemaphorePortBit) {
   m_iStrobePortBit = _iStrobePortBit;
   m_iClockPortBit = _iClockPortBit;
   m_iDataPortBit = _iDataPortBit;
@@ -15,6 +15,8 @@ StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBi
   pinMode(m_iStrobePortBit, OUTPUT);
   pinMode(m_iClockPortBit, OUTPUT);
   pinMode(m_iDataPortBit, OUTPUT);
+  if (m_iSemaphorePortBit)
+    pinMode(m_iSemaphorePortBit, OUTPUT);
 
   // test when optimization is active
 /*
@@ -36,11 +38,20 @@ StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBi
 void StopDriver::clockOutput()
 {
     delayMicroseconds(2);
-    // clock-it-in
     digitalWrite(m_iClockPortBit, LOW); 
     delayMicroseconds(2);
+    // clock-it-in
     digitalWrite(m_iClockPortBit, HIGH);     
     delayMicroseconds(2);
+}
+
+
+void StopDriver::setSemaphoreValue(bool bOn)
+{
+    if (bOn)
+      digitalWrite(m_iSemaphorePortBit, HIGH);     
+      else
+      digitalWrite(m_iSemaphorePortBit, LOW); 
 }
 
 
