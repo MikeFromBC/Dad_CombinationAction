@@ -6,15 +6,19 @@
 
 extern SoftwareSerial* debugSerial;
 
-StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBit, byte _iSkipUpperBits) {
-  iStrobePortBit = _iStrobePortBit;
-  iClockPortBit = _iClockPortBit;
-  iDataPortBit = _iDataPortBit;
-  iSkipUpperBits = _iSkipUpperBits;
+StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBit, byte _iSkipUpperBits, byte _iSemaphorePortBit) {
+  m_iStrobePortBit = _iStrobePortBit;
+  m_iClockPortBit = _iClockPortBit;
+  m_iDataPortBit = _iDataPortBit;
+  m_iSkipUpperBits = _iSkipUpperBits;
 
-  pinMode(iStrobePortBit, OUTPUT);
-  pinMode(iClockPortBit, OUTPUT);
-  pinMode(iDataPortBit, OUTPUT);
+  pinMode(m_iStrobePortBit, OUTPUT);
+  pinMode(m_iClockPortBit, OUTPUT);
+  pinMode(m_iDataPortBit, OUTPUT);
+  if (m_iSemaphorePortBit)
+    pinMode(m_iSemaphorePortBit, OUTPUT);
+
+  setSemaphoreValue(false);
 
   // test when optimization is active
 /*
@@ -36,11 +40,30 @@ StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBi
 void StopDriver::clockOutput()
 {
     delayMicroseconds(2);
+    digitalWrite(m_iClockPortBit, LOW); 
+    delayMicroseconds(2);
     // clock-it-in
-    digitalWrite(iClockPortBit, LOW); 
+    digitalWrite(m_iClockPortBit, HIGH);     
     delayMicroseconds(2);
-    digitalWrite(iClockPortBit, HIGH);     
-    delayMicroseconds(2);
+}
+
+
+void StopDriver::setSemaphoreValue(bool bOn)
+{
+  if (m_iSemaphorePortBit)
+    if (bOn)
+      digitalWrite(m_iSemaphorePortBit, HIGH);     
+      else
+      digitalWrite(m_iSemaphorePortBit, LOW); 
+}
+
+
+void StopDriver::pulseSemaphoreValue()
+{
+  if (m_iSemaphorePortBit) {
+    digitalWrite(m_iSemaphorePortBit, HIGH);     
+    digitalWrite(m_iSemaphorePortBit, LOW); 
+  }
 }
 
 
@@ -56,11 +79,11 @@ unsigned long StopDriver::calcDeactivation(unsigned long iDivStops, unsigned lon
 }
 
 
-void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState, byte _iSkipUpperBits) {
+void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState, byte iSkipUpperBits) {
 //  Serial.println(iDivStops);
 
   // always load MSB...LSB
-  const unsigned long MASK = 0x80000000;
+  const unsigned long OUTPUT_MASK = 0x80000000;
 
 //debugSerial->print("INPUT ");
 //debugSerial->print(iDivStops, HEX);
@@ -74,7 +97,7 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
 //debugSerial->println(iDeactivate, HEX);
 
   if (iActivate & iDeactivate > 0) {
-      Serial.println("OH NO!  WE'RE TRYING TO ACTIVATE AND DEACTIVATE AT THE SAME TIME!  Turning off deactivation to avoid serious problems.");
+      Serial.println("OH NO!  WE'RE TRYING TO ACTIVATE AND DEACTIVATE AT THE SAME TIME!  Turning off deactivation.");
       iDeactivate = 0;
   }
 
@@ -86,35 +109,36 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
 //    Serial.print(result);
 //    Serial.println(iDivStops);
 
-    if (iBitsAlreadyShiftedOut >= _iSkipUpperBits) {
+    if (iBitsAlreadyShiftedOut >= m_iSkipUpperBits) {
       // possibly deactivate stop; deactivate bit loaded first
-      if (iDeactivate & MASK) 
+      if (iDeactivate & OUTPUT_MASK) 
         // de-energise
-        digitalWrite(iDataPortBit, HIGH); 
+        digitalWrite(m_iDataPortBit, HIGH); 
         else
         // energise
-        digitalWrite(iDataPortBit, LOW); 
+        digitalWrite(m_iDataPortBit, LOW); 
   
       clockOutput();
   
       // possibly activate stop; activate bit loaded last
-      if (iActivate & MASK) {
+      if (iActivate & OUTPUT_MASK) {
         // energise
-        digitalWrite(iDataPortBit, HIGH); 
+        digitalWrite(m_iDataPortBit, HIGH); 
         debugSerial->print("1");
       } else {
         // de-energise
-        digitalWrite(iDataPortBit, LOW); 
+        digitalWrite(m_iDataPortBit, LOW); 
         debugSerial->print("0");
       }
+      
       clockOutput();
     }
-  
-    iBitsAlreadyShiftedOut++;
-    
+   
     // always load MSB...LSB
     iActivate=iActivate << 1;
     iDeactivate=iDeactivate << 1;
+  
+    iBitsAlreadyShiftedOut++;
   }
 
   debugSerial->println();
@@ -124,79 +148,79 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
 
 void StopDriver::setAllOff() {
   // lock output
-  digitalWrite(iStrobePortBit, LOW); 
+  digitalWrite(m_iStrobePortBit, LOW); 
 
   for (int i=MAX_DIV_STOPS * 2 - 1; i>=0; i--) 
   {
     // turn off deactivation; deactivate bit loaded first
-    digitalWrite(iDataPortBit, LOW); 
+    digitalWrite(m_iDataPortBit, LOW); 
 
     clockOutput();
 
     // turn off activation; activate bit loaded last
-    digitalWrite(iDataPortBit, LOW); 
+    digitalWrite(m_iDataPortBit, LOW); 
 
     clockOutput();
   }
 
   // unlock output
-  digitalWrite(iStrobePortBit, HIGH); 
+  digitalWrite(m_iStrobePortBit, HIGH); 
 }
 
 
 void StopDriver::testSetAllActive() {
   // lock output
-  digitalWrite(iStrobePortBit, LOW); 
+  digitalWrite(m_iStrobePortBit, LOW); 
 
   for (int i=7 * 12; i>=0; i--) 
   {
     // turn off deactivation; deactivate bit loaded first
-    digitalWrite(iDataPortBit, LOW); 
+    digitalWrite(m_iDataPortBit, LOW); 
 
     clockOutput();
 
     // turn off activation; activate bit loaded last
-    digitalWrite(iDataPortBit, HIGH); 
+    digitalWrite(m_iDataPortBit, HIGH); 
 
     clockOutput();
   }
 
   // unlock output
-  digitalWrite(iStrobePortBit, HIGH); 
+  digitalWrite(m_iStrobePortBit, HIGH); 
 }
 
 
 void StopDriver::testSetAllInactive() {
   // lock output
-  digitalWrite(iStrobePortBit, LOW); 
+  digitalWrite(m_iStrobePortBit, LOW); 
 
   for (int i=7 * 12; i>=0; i--) 
   {
     // turn off deactivation; deactivate bit loaded first
-    digitalWrite(iDataPortBit, HIGH); 
+    digitalWrite(m_iDataPortBit, HIGH); 
 
     clockOutput();
 
     // turn off activation; activate bit loaded last
-    digitalWrite(iDataPortBit, LOW); 
+    digitalWrite(m_iDataPortBit, LOW); 
 
     clockOutput();
   }
 
   // unlock output
-  digitalWrite(iStrobePortBit, HIGH); 
+  digitalWrite(m_iStrobePortBit, HIGH); 
 }
 
 
 void StopDriver::send(unsigned long iDiv1Stops, unsigned long iDiv1State, unsigned long iDiv2Stops, unsigned long iDiv2State) {
   // lock output
-  digitalWrite(iStrobePortBit, LOW); 
+  digitalWrite(m_iStrobePortBit, LOW); 
 
   sendDataEx(iDiv2Stops, iDiv2State, 0);
-  sendDataEx(iDiv1Stops, iDiv1State, iSkipUpperBits);
+  sendDataEx(iDiv1Stops, iDiv1State, m_iSkipUpperBits);
   
   // unlock output
-  digitalWrite(iStrobePortBit, HIGH); 
+  digitalWrite(m_iStrobePortBit, HIGH); 
 }
 
 
