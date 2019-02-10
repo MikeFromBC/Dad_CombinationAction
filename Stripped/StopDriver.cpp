@@ -18,6 +18,8 @@ StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBi
   if (m_iSemaphorePortBit)
     pinMode(m_iSemaphorePortBit, OUTPUT);
 
+  setSemaphoreValue(false);
+
   // test when optimization is active
 /*
   if (calcActivation(1, 1)!=0) debugSerial->println("test failed for ACTIVATION SKIP");
@@ -48,10 +50,20 @@ void StopDriver::clockOutput()
 
 void StopDriver::setSemaphoreValue(bool bOn)
 {
+  if (m_iSemaphorePortBit)
     if (bOn)
       digitalWrite(m_iSemaphorePortBit, HIGH);     
       else
       digitalWrite(m_iSemaphorePortBit, LOW); 
+}
+
+
+void StopDriver::pulseSemaphoreValue()
+{
+  if (m_iSemaphorePortBit) {
+    digitalWrite(m_iSemaphorePortBit, HIGH);     
+    digitalWrite(m_iSemaphorePortBit, LOW); 
+  }
 }
 
 
