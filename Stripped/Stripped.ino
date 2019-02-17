@@ -19,9 +19,9 @@ StopDriver* driver_CH_GT;
 StopDriver* driver_SW_PD;
 MidiReader* midiReader;
 
-enum TestMode {tmNormal, tmSequential, tmLowLevelCycle, tmCycleAll, tmCycleLeft, tmCycleRight};
+enum TestMode {tmNormal, tmSequential, tmLowLevelCycle, tmCycleAll, tmCycleLeft, tmCycleRight, tmCustom};
 
-TestMode eTestMode = tmNormal;
+TestMode eTestMode = tmCustom;// tmSequential;//tmNormal;
 bool bDebug = false;
 
 String sCommandBuffer;
@@ -32,6 +32,7 @@ void setup() {
   debugSerial->begin(19200);
   debugSerial->println("Starting...");
 
+  sCommandBuffer.reserve(50);
   sCommandBuffer = "";
 
   pinMode(HEART_BEAT_LED, OUTPUT);
@@ -40,63 +41,67 @@ void setup() {
   pinMode(MIDI_BOARD_SWITCH_RECALL, INPUT_PULLUP);
   pinMode(MIDI_BOARD_SWITCH_CLEAR, INPUT_PULLUP);
   
+  pinMode(30, OUTPUT);
+  
   stopState = new StopState();
   midiReader = new MidiReader(stopState);
 
   // 2nd division starts at pin 41 (64 pins if all used - 40 pins allocated) / 2 = 12 upper bits to skip on lower value provided last)
   // same offset for both boards.
   // the "41" mentioned below is a port #
-  driver_SW_PD = new StopDriver(41, 39, 37, 12, 35);
-  driver_CH_GT = new StopDriver(40, 38, 36, 12, 0);  
+  driver_SW_PD = new StopDriver(49, 47, 45, 12, 35);
+  driver_CH_GT = new StopDriver(48, 46, 44, 12, 0);  
 //  driver_SW_PD = new StopDriver(37, 39, 41, 12);
 //  driver_CH_GT = new StopDriver(36, 38, 40, 12);  
 }
 
 
 void handleCommands() {
-  while (Serial.available() > 0) {
+  while (debugSerial->available() > 0) {
     // get incoming byte:
-    char c = Serial.read();
+    char c = debugSerial->read();
 
     // discard unused char
     if (c == 10)
       continue;
 
     if (c == 13) {
-      Serial.println("Executing command:  " + sCommandBuffer);
+      debugSerial->print("Executing command:  ");
+      debugSerial->println(sCommandBuffer);
 
       if (sCommandBuffer.equalsIgnoreCase("Normal")) {
         eTestMode = tmNormal;
-        Serial.println("Normal mode selected");
+        debugSerial->println("Normal mode selected");
+      } else if (sCommandBuffer.equalsIgnoreCase("Custom")) {
+        eTestMode = tmCustom;
+        debugSerial->println("Custom test mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("Seq")) {
         eTestMode = tmSequential;
-        Serial.println("Sequential mode selected");
+        debugSerial->println("Sequential mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("LLCycle")) {
         eTestMode = tmLowLevelCycle;
-        Serial.println("Low Level Cycle mode selected");
+        debugSerial->println("Low Level Cycle mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("CycleAll")) {
         eTestMode = tmCycleAll;
-        Serial.println("Cycle All mode selected");
+        debugSerial->println("Cycle All mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("CycleLeft")) {
         eTestMode = tmCycleLeft;
-        Serial.println("Cycle Left mode selected");
+        debugSerial->println("Cycle Left mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("CycleRight")) {
         eTestMode = tmCycleRight;
-        Serial.println("Cycle Right mode selected");
+        debugSerial->println("Cycle Right mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("DebugOn")) {
         bDebug = true;
-        Serial.println("Debug is now on");
+        debugSerial->println("Debug is now on");
       } else if (sCommandBuffer.equalsIgnoreCase("DebugOff")) {
         bDebug = false;
-        Serial.println("Debug is now off");
+        debugSerial->println("Debug is now off");
       } else
-        Serial.println("Unrecognized command!");
+        debugSerial->println("Unrecognized command!");  
 
-      Serial.println();
-
-      sCommandBuffer = "";
+      sCommandBuffer = "";  
     } else
-      sCommandBuffer += c;
+      sCommandBuffer+=c;
   }
 }
 
@@ -157,27 +162,77 @@ void normalRun() {
 
 
 void loop() {
-  // TEST:  operate all stops ON, OFF, repeat
+  int iStop;
+
   while(1) {
+    driver_CH_GT->setAllOff();
+    driver_SW_PD->setAllOff();
+
     handleCommands();
-  
+
     switch (eTestMode) {
-      tmNormal:
+  /*
+      case tmNormal:
         normalRun();
-        break;
+        break;  */
   
-      tmSequential:
-        int iStop=1;
-        for (int i=0; i<20; i++) 
+      case tmSequential:
+        iStop=1;
+        
+        // could use MAX_DIV_STOPS instead but we don't have that many stops
+        for (int i=0; i<15; i++) 
         {
           driver_CH_GT->send(iStop, 0,   // CH
-                             iStop, 0);  // GT
+                             iStop>>2, 0);  // GT
+          driver_SW_PD->send(iStop, 0,   // SW
+                             iStop>>2, 0);  // PD
+
+          delay(STOP_DRIVE_TIME_MS);
+          
+          driver_CH_GT->setAllOff();
+          driver_SW_PD->setAllOff();
+          
           iStop=iStop<<1;
           delay(1000);
         }
         break;
-  
-      tmLowLevelCycle:
+
+      case tmCustom:
+        // could use MAX_DIV_STOPS instead but we don't have that many stops
+        for (int i=0; i<15; i++) 
+        {
+          debugSerial->println("(begin)");
+          
+          driver_CH_GT->send(0xffffffff, 0,   // CH
+                             0xffffffff, 0);  // GT
+
+          driver_SW_PD->send(0xffffffff, 0,   // SW
+                             0xffffffff, 0);  // PD
+
+          delay(STOP_DRIVE_TIME_MS);
+          
+          driver_CH_GT->setAllOff();
+          driver_SW_PD->setAllOff();
+          
+          delay(1000);
+
+          driver_CH_GT->send(0, 0,   // SW
+                             0, 0);  // PD
+
+          driver_SW_PD->send(0, 0,   // SW
+                             0, 0);  // PD
+
+          delay(STOP_DRIVE_TIME_MS);
+          
+          driver_CH_GT->setAllOff();
+          driver_SW_PD->setAllOff();
+          
+          delay(1000);
+        }
+        break;
+        
+  /*
+      case tmLowLevelCycle:
         driver_CH_GT->testSetAllActive();
         delay(STOP_DRIVE_TIME_MS);
         driver_CH_GT->setAllOff();
@@ -190,7 +245,7 @@ void loop() {
   
         break;
         
-      tmCycleAll: 
+      case tmCycleAll: 
         debugSerial->print("PART ON:   ");
         //2048, 1
         driver_CH_GT->send((unsigned long) 0xffffffff, 0,   // CH
@@ -219,7 +274,7 @@ void loop() {
         delay(1000);
         break;
       
-      tmCycleLeft:
+      case tmCycleLeft:
         debugSerial->print("PART ON:   ");
         //2048, 1
         driver_CH_GT->send((unsigned long) 0xffffffff, 0,   // CH
@@ -242,7 +297,7 @@ void loop() {
         delay(1000);
         break;
       
-      tmCycleRight:  
+      case tmCycleRight:  
         debugSerial->print("PART ON:   ");
         //2048, 1
         driver_SW_PD->send((unsigned long) 0xffffffff, 0,   // SW
@@ -263,8 +318,8 @@ void loop() {
         driver_SW_PD->setAllOff();
       
         delay(1000);
-        break;
-    }
+        break;  */
+    }  
   }
   
   flashHeartbeatLED();

@@ -39,12 +39,12 @@ StopDriver::StopDriver(int _iStrobePortBit, int _iClockPortBit, int _iDataPortBi
 
 void StopDriver::clockOutput()
 {
-    delayMicroseconds(2);
     digitalWrite(m_iClockPortBit, LOW); 
-    delayMicroseconds(2);
+    // probably not needed; works without this delay. 
+    // this is provided for the one having the 6' long cable.
+    delayMicroseconds(1);
     // clock-it-in
     digitalWrite(m_iClockPortBit, HIGH);     
-    delayMicroseconds(2);
 }
 
 
@@ -124,11 +124,11 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
       if (iActivate & OUTPUT_MASK) {
         // energise
         digitalWrite(m_iDataPortBit, HIGH); 
-        debugSerial->print("1");
+        //debugSerial->print("1");
       } else {
         // de-energise
         digitalWrite(m_iDataPortBit, LOW); 
-        debugSerial->print("0");
+        //debugSerial->print("0");
       }
       
       clockOutput();
@@ -141,7 +141,7 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
     iBitsAlreadyShiftedOut++;
   }
 
-  debugSerial->println();
+  //debugSerial->println();
 //  Serial.println("end");
 }
 
