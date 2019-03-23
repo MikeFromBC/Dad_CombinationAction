@@ -1,4 +1,5 @@
 #include <SoftwareSerial.h>
+#include <EEPROM.h>
 
 #include "Types.h"
 #include "Utils.h"
@@ -12,6 +13,84 @@
 #define MIDI_BOARD_SWITCH_PROG MIDI_BOARD_SWITCH_D2  
 #define MIDI_BOARD_SWITCH_RECALL MIDI_BOARD_SWITCH_D3
 #define MIDI_BOARD_SWITCH_CLEAR MIDI_BOARD_SWITCH_D4
+
+#define EEPROM_MEMORY_START 0x0000
+
+#define PISTON_GT_INPUT_ROW_PIN  43 /* PL6 */
+#define PISTON_CH_INPUT_ROW_PIN  42 /* PL4 */
+#define PISTON_SW_INPUT_ROW_PIN  41 /* PL7 */
+#define PISTON_PL_INPUT_ROW_PIN  40 /* PG1 */
+#define PISTON_PR_INPUT_ROW_PIN  39 /* PG2 */
+
+#define SET_PISTON_INPUT_PIN  33 /* PC4 */
+
+#define GT_ROW 1
+#define SW_ROW 2
+#define CH_ROW 3
+#define PL_ROW 4
+#define PR_ROW 5
+
+#define ROW_CODE_SHIFT 8
+
+#define NO_KEY 0
+
+#define PISTON_OFFSET_ERROR -1
+#define SW_1  ((SW_ROW << ROW_CODE_SHIFT) + 1) 
+#define SW_2  ((SW_ROW << ROW_CODE_SHIFT) + 2) 
+#define SW_3  ((SW_ROW << ROW_CODE_SHIFT) + 4) 
+#define SW_4  ((SW_ROW << ROW_CODE_SHIFT) + 8) 
+
+#define GT_GEN_1  ((GT_ROW << ROW_CODE_SHIFT) + 1)  
+#define GT_GEN_2  ((GT_ROW << ROW_CODE_SHIFT) + 2) 
+#define GT_GEN_3  ((GT_ROW << ROW_CODE_SHIFT) + 4) 
+#define GT_GEN_4  ((GT_ROW << ROW_CODE_SHIFT) + 8)
+#define GT_1      ((GT_ROW << ROW_CODE_SHIFT) + 16)
+#define GT_2      ((GT_ROW << ROW_CODE_SHIFT) + 32)
+#define GT_3      ((GT_ROW << ROW_CODE_SHIFT) + 64)
+#define GT_4      ((GT_ROW << ROW_CODE_SHIFT) + 128)
+
+#define CH_GENSET ((CH_ROW << ROW_CODE_SHIFT) + 1)   /* special; not in matrix */
+#define CH_1      ((CH_ROW << ROW_CODE_SHIFT) + 2)
+#define CH_2      ((CH_ROW << ROW_CODE_SHIFT) + 4)
+#define CH_3      ((CH_ROW << ROW_CODE_SHIFT) + 8)
+#define CH_4      ((CH_ROW << ROW_CODE_SHIFT) + 16)
+#define CH_GENCAN ((CH_ROW << ROW_CODE_SHIFT) + 32)
+
+#define PD_GEN_1          ((PL_ROW << ROW_CODE_SHIFT) + 1)
+#define PD_GEN_2          ((PL_ROW << ROW_CODE_SHIFT) + 2)
+#define PD_GEN_3          ((PL_ROW << ROW_CODE_SHIFT) + 4)
+#define PD_GEN_4          ((PL_ROW << ROW_CODE_SHIFT) + 8)
+#define PD_SW_TO_GT_CPL   ((PL_ROW << ROW_CODE_SHIFT) + 16)
+
+#define PD_1             ((PR_ROW << ROW_CODE_SHIFT) + 1)
+#define PD_2             ((PR_ROW << ROW_CODE_SHIFT) + 2)
+#define PD_3             ((PR_ROW << ROW_CODE_SHIFT) + 3)
+#define PD_4             ((PR_ROW << ROW_CODE_SHIFT) + 4)
+#define PD_GT_TO_PD_CPL  ((PR_ROW << ROW_CODE_SHIFT) + 16)
+#define PD_FULL_ORGAN    ((PR_ROW << ROW_CODE_SHIFT) + 32)
+
+#define DIVISIONS 4
+#define DIVISION_MEM_SIZE_BYTES sizeof(long)
+#define GENERAL_MEM_SIZE_BYTES (DIVISION_MEM_SIZE_BYTES * DIVISIONS)
+#define DIVISION_MEM_PISTON_COUNT 16
+#define GENERAL_MEM_PISTON_COUNT 8
+#define MEMORY_LEVEL_SIZE_BYTES ((DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * GENERAL_MEM_PISTON_COUNT))
+
+enum Piston {pbNone,
+             // divisions
+             pbSW1, pbSW2, pbSW3, pbSW4, 
+             pbGT1, pbGT2, pbGT3, pbGT4, 
+             pbCH1, pbCH2, pbCH3, pbCH4,
+             pbPD1, pbPD2, pbPD3, pbPD4, 
+             // generals
+             pbKGen1, pbKGen2, pbKGen3, pbKGen4, 
+             pbPGen1, pbPGen2, pbPGen3, pbPGen4,
+             // other
+             pbSWToGTCoupler, pbGTToPDCoupler, pbFullOrgan,
+             pbGenCan};
+
+
+enum Division {diNone, diOther, diSwell, diGreat, diChior, diPedal, diGeneral};
 
 SoftwareSerial* debugSerial;
 StopState* stopState;
@@ -40,8 +119,18 @@ void setup() {
   pinMode(MIDI_BOARD_SWITCH_PROG, INPUT_PULLUP);
   pinMode(MIDI_BOARD_SWITCH_RECALL, INPUT_PULLUP);
   pinMode(MIDI_BOARD_SWITCH_CLEAR, INPUT_PULLUP);
-  
-  pinMode(30, OUTPUT);
+
+  pinMode(PISTON_GT_INPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_CH_INPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_SW_INPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_PL_INPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_PR_INPUT_ROW_PIN, OUTPUT);
+
+  pinMode(SET_PISTON_INPUT_PIN, INPUT_PULLUP);
+
+  // port A is an input with pullup
+  DDRA  = B00000000;
+  PORTA = B11111111;
   
   stopState = new StopState();
   midiReader = new MidiReader(stopState);
@@ -106,6 +195,501 @@ void handleCommands() {
 }
 
 
+int readScanCode() {
+  digitalWrite(PISTON_GT_INPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_CH_INPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_SW_INPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_PL_INPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_PR_INPUT_ROW_PIN, HIGH);
+
+  digitalWrite(PISTON_GT_INPUT_ROW_PIN, LOW);
+  if (PORTA<0xff)
+    return (GT_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+
+  digitalWrite(PISTON_CH_INPUT_ROW_PIN, LOW);
+  if (PORTA<0xff)
+    return (CH_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+
+  digitalWrite(PISTON_SW_INPUT_ROW_PIN, LOW);
+  if (PORTA<0xff)
+    return (SW_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+
+  digitalWrite(PISTON_PL_INPUT_ROW_PIN, LOW);
+  if (PORTA<0xff)
+    return (PL_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+
+  digitalWrite(PISTON_PR_INPUT_ROW_PIN, LOW);
+  if (PORTA<0xff)
+    return (PR_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+
+  return NO_KEY;
+}
+
+
+Piston getPressedPiston() {
+   int iScanCode = readScanCode();
+
+   switch (iScanCode) {
+     case NO_KEY:
+        return pbNone;
+        
+     case SW_1:
+        return pbSW1;
+        
+     case SW_2:
+        return pbSW2;
+        
+     case SW_3:
+        return pbSW3;
+        
+     case SW_4:
+        return pbSW4;
+
+     case GT_1:
+        return pbGT1;
+        
+     case GT_2:
+        return pbGT2;
+        
+     case GT_3:
+        return pbGT3;
+        
+     case GT_4:
+        return pbGT4;
+        
+     case GT_GEN_1:
+        return pbKGen1;
+        
+     case GT_GEN_2:
+        return pbKGen2;
+        
+     case GT_GEN_3:
+        return pbKGen3;
+        
+     case GT_GEN_4:
+        return pbKGen4;
+        
+     case CH_1:
+        return pbCH1;
+        
+     case CH_2:
+        return pbCH2;
+        
+     case CH_3:
+        return pbCH3;
+        
+     case CH_4:
+        return pbCH4;
+
+     case CH_GENCAN:
+        return pbGenCan;
+        
+     case PD_GEN_1:
+        return pbPGen1;
+        
+     case PD_GEN_2:
+        return pbPGen2;
+        
+     case PD_GEN_3:
+        return pbPGen3;
+        
+     case PD_GEN_4:
+        return pbPGen4;
+        
+     case PD_SW_TO_GT_CPL:
+        return pbSWToGTCoupler;
+        
+     case PD_1:
+        return pbPD1;
+        
+     case PD_2:
+        return pbPD2;
+        
+     case PD_3:
+        return pbPD3;
+        
+     case PD_4:
+        return pbPD4;
+        
+     case PD_GT_TO_PD_CPL:
+        return pbGTToPDCoupler;
+
+     case PD_FULL_ORGAN:
+        return pbFullOrgan;
+
+     default:  return pbNone;
+   }
+}
+
+
+Division getDivision(Piston piston) {
+  switch (piston) {
+    case pbNone:
+      return diNone;
+      
+    case pbSW1 ... pbSW4:
+      return diSwell;
+      
+    case pbGT1 ... pbGT4:
+      return diGreat;
+      
+    case pbCH1 ... pbCH4:
+      return diChior;
+      
+    case pbPD1 ... pbPD4:
+      return diPedal;
+      
+    case pbKGen1 ... pbKGen4:
+    case pbPGen1 ... pbPGen4:
+      return diGeneral;
+      
+    default:
+      return diOther;      
+  }
+}
+
+
+void describeDivision(Division division) {
+  switch (division) {
+    case diNone:
+      break;
+      
+    case diSwell:
+      debugSerial->print("diSwell");
+      break;
+      
+    case diGreat:
+      debugSerial->print("diGreat");
+      break;
+      
+    case diChior:
+      debugSerial->println("diChior");
+      break;
+      
+    case diPedal:
+      debugSerial->println("diPedal");
+      break;
+      
+    case diGeneral:
+      debugSerial->println("diGeneral");
+      break;
+      
+    case diOther:
+      debugSerial->println("diOther");
+      break;
+      
+    default: debugSerial->println("UNKNOWN DIVISION!");
+  }
+}
+
+
+void describePiston(Piston piston) {
+  switch (piston) {
+    case pbNone:
+      //debugSerial->println("pbNone");
+      break;
+      
+    case pbSW1:
+      debugSerial->println("pbSW1");
+      break;
+      
+    case pbSW2:
+      debugSerial->println("pbSW2");
+      break;
+      
+    case pbSW3:
+      debugSerial->println("pbSW3");
+      break;
+      
+    case pbSW4:
+      debugSerial->println("pbSW4");
+      break;
+
+
+      
+    case pbGT1:
+      debugSerial->println("pbGT1");
+      break;
+      
+    case pbGT2:
+      debugSerial->println("pbGT2");
+      break;
+      
+    case pbGT3:
+      debugSerial->println("pbGT3");
+      break;
+      
+    case pbGT4:
+      debugSerial->println("pbGT4");
+      break;
+
+      
+      
+    case pbCH1:
+      debugSerial->println("pbCH1");
+      break;
+      
+    case pbCH2:
+      debugSerial->println("pbCH2");
+      break;
+      
+    case pbCH3:
+      debugSerial->println("pbCH3");
+      break;
+      
+    case pbCH4:
+      debugSerial->println("pbCH4");
+      break;
+
+      
+      
+    case pbPD1:
+      debugSerial->println("pbPD1");
+      break;
+      
+    case pbPD2:
+      debugSerial->println("pbPD2");
+      break;
+      
+    case pbPD3:
+      debugSerial->println("pbPD3");
+      break;
+      
+    case pbPD4:
+      debugSerial->println("pbPD4");
+      break;
+      
+
+      
+    case pbKGen1:
+      debugSerial->println("pbKGen1");
+      break;
+      
+    case pbKGen2:
+      debugSerial->println("pbKGen2");
+      break;
+      
+    case pbKGen3:
+      debugSerial->println("pbKGen3");
+      break;
+      
+    case pbKGen4:
+      debugSerial->println("pbKGen4");
+      break;
+      
+
+    case pbPGen1:
+      debugSerial->println("pbPGen1");
+      break;
+      
+    case pbPGen2:
+      debugSerial->println("pbPGen2");
+      break;
+      
+    case pbPGen3:
+      debugSerial->println("pbPGen3");
+      break;
+      
+    case pbPGen4:
+      debugSerial->println("pbPGen4");
+      break;
+      
+
+    case pbSWToGTCoupler:
+      debugSerial->println("pbSWToGTCoupler");
+      break;
+      
+    case pbGTToPDCoupler:
+      debugSerial->println("pbGTToPDCoupler");
+      break;
+      
+    case pbFullOrgan:
+      debugSerial->println("pbFullOrgan");
+      break;
+      
+    case pbGenCan:
+      debugSerial->println("pbGenCan");
+      break;
+      
+    default:
+      debugSerial->println("OOPS...UNKNOWN KEY!");
+      break;
+      
+  }
+}
+
+int getPistonMemOffset(Piston piston) {
+  switch (piston) {
+     case pbSW1:return DIVISION_MEM_SIZE_BYTES * 0;
+     case pbSW2:return DIVISION_MEM_SIZE_BYTES * 1;
+     case pbSW3:return DIVISION_MEM_SIZE_BYTES * 2;
+     case pbSW4:return DIVISION_MEM_SIZE_BYTES * 3;
+     case pbGT1:return DIVISION_MEM_SIZE_BYTES * 4;
+     case pbGT2:return DIVISION_MEM_SIZE_BYTES * 5;
+     case pbGT3:return DIVISION_MEM_SIZE_BYTES * 6;
+     case pbGT4:return DIVISION_MEM_SIZE_BYTES * 7;
+     case pbCH1:return DIVISION_MEM_SIZE_BYTES * 8;
+     case pbCH2:return DIVISION_MEM_SIZE_BYTES * 9;
+     case pbCH3:return DIVISION_MEM_SIZE_BYTES * 10;
+     case pbCH4:return DIVISION_MEM_SIZE_BYTES * 11;
+     case pbPD1:return DIVISION_MEM_SIZE_BYTES * 12;
+     case pbPD2:return DIVISION_MEM_SIZE_BYTES * 13;
+     case pbPD3:return DIVISION_MEM_SIZE_BYTES * 14;
+     case pbPD4:return DIVISION_MEM_SIZE_BYTES * 15;
+     case pbKGen1:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 0);
+     case pbKGen2:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 1);
+     case pbKGen3:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 2);
+     case pbKGen4:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 3);
+     case pbPGen1:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 4);
+     case pbPGen2:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 5);
+     case pbPGen3:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 6);
+     case pbPGen4:return (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * 7);
+     default:  return PISTON_OFFSET_ERROR;
+   }
+}
+
+
+int getMemoryPos() {
+  return 0;
+}
+
+int getMemOffset(Piston piston) {
+  int iPistonMemOffset = getPistonMemOffset(piston);
+
+  if (iPistonMemOffset==PISTON_OFFSET_ERROR)
+    return PISTON_OFFSET_ERROR;
+    else 
+    return EEPROM_MEMORY_START + (MEMORY_LEVEL_SIZE_BYTES * getMemoryPos()) + iPistonMemOffset;
+}
+
+
+void storePiston(Piston piston) {
+  int iPistonMemoryOffset = getMemOffset(piston);
+
+  if (iPistonMemoryOffset<0) 
+    return;
+  
+  switch (piston) {
+    case pbSW1 ... pbSW4:
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->swell);
+      break;
+      
+    case pbGT1 ... pbGT4:
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->great);
+      break;
+      
+    case pbCH1 ... pbCH4:
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->chior);
+      break;
+
+    case pbPD1 ... pbPD4:
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->pedal);
+      break;
+      
+    case pbKGen1 ... pbKGen4:
+    case pbPGen1 ... pbPGen4:
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->chior);
+      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->great);
+      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->swell);
+      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
+      eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->pedal);
+      break;
+  }
+}
+
+
+void restorePiston(Piston piston) {
+  unsigned long iPistonMemoryOffset = getMemOffset(piston);
+
+  if (iPistonMemoryOffset<0) 
+    return;
+    
+  long iRestoreDivValue = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+
+  switch (piston) {
+    case pbSW1 ... pbSW4:
+      driver_SW_PD->send(iRestoreDivValue, stopState->swell,      // SW
+                         stopState->pedal, stopState->pedal);  // PD
+      break;
+      
+    case pbGT1 ... pbGT4:
+      driver_CH_GT->send(stopState->chior, stopState->chior,   // CH
+                         iRestoreDivValue, stopState->great);     // GT
+      break;
+      
+    case pbCH1 ... pbCH4:
+      driver_CH_GT->send(iRestoreDivValue, stopState->chior,      // CH
+                         stopState->great, stopState->great);  // GT
+      break;
+
+    case pbPD1 ... pbPD4:
+      driver_SW_PD->send(stopState->swell, stopState->swell,   // SW
+                         iRestoreDivValue, stopState->pedal);     // PD
+      break;
+      
+    case pbKGen1 ... pbKGen4:
+    case pbPGen1 ... pbPGen4:
+      long iChior = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
+      long iGreat = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
+      long iSwell = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
+      long iPedal = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+      driver_CH_GT->send(iChior, stopState->chior,   // CH
+                         iGreat, stopState->great);  // GT
+
+      driver_SW_PD->send(iSwell, stopState->swell,   // SW
+                         iPedal, stopState->pedal);  // PD
+
+      break;
+  }
+
+  delay(STOP_DRIVE_TIME_MS);
+  
+  driver_CH_GT->setAllOff();
+  driver_SW_PD->setAllOff();
+}
+
+
+bool getStore() {
+  return digitalRead(SET_PISTON_INPUT_PIN);
+}
+
+void doPiston(Piston piston) {
+  if (getStore()) 
+    storePiston(piston);
+    else
+    restorePiston(piston);
+
+  switch (piston) {
+    case pbSWToGTCoupler:
+      break;
+      
+    case pbGTToPDCoupler:
+      break;
+      
+    case pbFullOrgan:
+      break;
+      
+    case pbGenCan:
+      driver_CH_GT->send(0, stopState->chior,   // CH
+                         0, stopState->great);  // GT
+
+      driver_SW_PD->send(0, stopState->swell,   // SW
+                         0, stopState->pedal);  // PD
+
+      delay(STOP_DRIVE_TIME_MS);
+      
+      driver_CH_GT->setAllOff();
+      driver_SW_PD->setAllOff();
+      break;
+  }
+}
+    
+
 void normalRun() {
     unsigned long iGreat = 0;
     unsigned long iChior = 0;
@@ -113,51 +697,14 @@ void normalRun() {
     unsigned long iSwell = 0;
 
     midiReader->readMessages();
-  
-    if (!digitalRead(MIDI_BOARD_SWITCH_PROG))
-    {
-      debugSerial->println("program!");
-      iGreat = stopState->great;
-      iChior = stopState->chior;
-      iPedal = stopState->pedal;
-      iSwell = stopState->swell;
-//      debugSerial->print("Great:  ");
-//      debugSerial->println(iGreat);
-//      debugSerial->print("Chior:  ");
-//      debugSerial->println(iChior);
-    } else  
-    if (!digitalRead(MIDI_BOARD_SWITCH_CLEAR))
-    {
-      debugSerial->println("clear!");
 
-      driver_CH_GT->send(0, 0,   // CH
-                         0, 0);  // GT
-      driver_SW_PD->send(0, 0,   // SW
-                         0, 0);  // PD
-    
-      delay(STOP_DRIVE_TIME_MS);
-    
-      driver_CH_GT->setAllOff();
-      driver_SW_PD->setAllOff();
-    } else
-    if (!digitalRead(MIDI_BOARD_SWITCH_RECALL))
-    {
-      debugSerial->println("recall!");
-//      debugSerial->print("Great:  ");
-//      debugSerial->println(iGreat);
-//      debugSerial->print("Chior:  ");
-//      debugSerial->println(iChior);
+    Piston piston = getPressedPiston();
+    Division division = getDivision(piston);
 
-      driver_CH_GT->send(iChior, 0,
-                         iGreat, 0);
-      driver_SW_PD->send(iSwell, 0,
-                         iPedal, 0);
+    doPiston(piston);
     
-      delay(STOP_DRIVE_TIME_MS);
-    
-      driver_CH_GT->setAllOff();
-      driver_SW_PD->setAllOff();
-    }
+    describeDivision(division);
+    describePiston(piston);
 }  // normalRun
 
 
@@ -171,10 +718,10 @@ void loop() {
     handleCommands();
 
     switch (eTestMode) {
-  /*
+  
       case tmNormal:
         normalRun();
-        break;  */
+        break;  
   
       case tmSequential:
         iStop=1;
@@ -216,8 +763,8 @@ void loop() {
           
           delay(1000);
 
-          driver_CH_GT->send(0, 0,   // SW
-                             0, 0);  // PD
+          driver_CH_GT->send(0, 0,   // CH
+                             0, 0);  // GT
 
           driver_SW_PD->send(0, 0,   // SW
                              0, 0);  // PD
