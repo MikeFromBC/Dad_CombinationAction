@@ -16,11 +16,11 @@
 
 #define EEPROM_MEMORY_START 0x0000
 
-#define PISTON_GT_INPUT_ROW_PIN  43 /* PL6 */
-#define PISTON_CH_INPUT_ROW_PIN  42 /* PL4 */
-#define PISTON_SW_INPUT_ROW_PIN  41 /* PL7 */
-#define PISTON_PL_INPUT_ROW_PIN  40 /* PG1 */
-#define PISTON_PR_INPUT_ROW_PIN  39 /* PG2 */
+#define PISTON_GT_OUTPUT_ROW_PIN  43 /* PL6 */
+#define PISTON_CH_OUTPUT_ROW_PIN  42 /* PL4 */
+#define PISTON_SW_OUTPUT_ROW_PIN  41 /* PL7 */
+#define PISTON_PL_OUTPUT_ROW_PIN  40 /* PG1 */
+#define PISTON_PR_OUTPUT_ROW_PIN  39 /* PG2 */
 
 #define SET_PISTON_INPUT_PIN  33 /* PC4 */
 
@@ -98,9 +98,9 @@ StopDriver* driver_CH_GT;
 StopDriver* driver_SW_PD;
 MidiReader* midiReader;
 
-enum TestMode {tmNormal, tmSequential, tmLowLevelCycle, tmCycleAll, tmCycleLeft, tmCycleRight, tmCustom};
+enum TestMode {tmNormal, tmSequential, tmCycleAll, tmCustom};
 
-TestMode eTestMode = tmCustom;// tmSequential;//tmNormal;
+TestMode eTestMode = tmNormal;  
 bool bDebug = false;
 
 String sCommandBuffer;
@@ -120,11 +120,11 @@ void setup() {
   pinMode(MIDI_BOARD_SWITCH_RECALL, INPUT_PULLUP);
   pinMode(MIDI_BOARD_SWITCH_CLEAR, INPUT_PULLUP);
 
-  pinMode(PISTON_GT_INPUT_ROW_PIN, OUTPUT);
-  pinMode(PISTON_CH_INPUT_ROW_PIN, OUTPUT);
-  pinMode(PISTON_SW_INPUT_ROW_PIN, OUTPUT);
-  pinMode(PISTON_PL_INPUT_ROW_PIN, OUTPUT);
-  pinMode(PISTON_PR_INPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_GT_OUTPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_CH_OUTPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_SW_OUTPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_PL_OUTPUT_ROW_PIN, OUTPUT);
+  pinMode(PISTON_PR_OUTPUT_ROW_PIN, OUTPUT);
 
   pinMode(SET_PISTON_INPUT_PIN, INPUT_PULLUP);
 
@@ -132,6 +132,15 @@ void setup() {
   DDRA  = B00000000;
   PORTA = B11111111;
   
+  pinMode(22, INPUT_PULLUP);
+  pinMode(23, INPUT_PULLUP);
+  pinMode(24, INPUT_PULLUP);
+  pinMode(25, INPUT_PULLUP);
+  pinMode(26, INPUT_PULLUP);
+  pinMode(27, INPUT_PULLUP);
+  pinMode(28, INPUT_PULLUP);
+  pinMode(29, INPUT_PULLUP);
+
   stopState = new StopState();
   midiReader = new MidiReader(stopState);
 
@@ -167,18 +176,9 @@ void handleCommands() {
       } else if (sCommandBuffer.equalsIgnoreCase("Seq")) {
         eTestMode = tmSequential;
         debugSerial->println("Sequential mode selected");
-      } else if (sCommandBuffer.equalsIgnoreCase("LLCycle")) {
-        eTestMode = tmLowLevelCycle;
-        debugSerial->println("Low Level Cycle mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("CycleAll")) {
         eTestMode = tmCycleAll;
         debugSerial->println("Cycle All mode selected");
-      } else if (sCommandBuffer.equalsIgnoreCase("CycleLeft")) {
-        eTestMode = tmCycleLeft;
-        debugSerial->println("Cycle Left mode selected");
-      } else if (sCommandBuffer.equalsIgnoreCase("CycleRight")) {
-        eTestMode = tmCycleRight;
-        debugSerial->println("Cycle Right mode selected");
       } else if (sCommandBuffer.equalsIgnoreCase("DebugOn")) {
         bDebug = true;
         debugSerial->println("Debug is now on");
@@ -196,31 +196,36 @@ void handleCommands() {
 
 
 int readScanCode() {
-  digitalWrite(PISTON_GT_INPUT_ROW_PIN, HIGH);
-  digitalWrite(PISTON_CH_INPUT_ROW_PIN, HIGH);
-  digitalWrite(PISTON_SW_INPUT_ROW_PIN, HIGH);
-  digitalWrite(PISTON_PL_INPUT_ROW_PIN, HIGH);
-  digitalWrite(PISTON_PR_INPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, HIGH);  // unnecessary
+  digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, HIGH);
+  digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, HIGH);
 
-  digitalWrite(PISTON_GT_INPUT_ROW_PIN, LOW);
-  if (PORTA<0xff)
-    return (GT_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+  digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, LOW);
+  if (PINA<0xff)
+    return (GT_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, HIGH);
 
-  digitalWrite(PISTON_CH_INPUT_ROW_PIN, LOW);
-  if (PORTA<0xff)
-    return (CH_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+  digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, LOW);
+  if (PINA<0xff)
+    return (CH_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, HIGH);
 
-  digitalWrite(PISTON_SW_INPUT_ROW_PIN, LOW);
-  if (PORTA<0xff)
-    return (SW_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+  digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, LOW);
+  if (PINA<0xff)
+    return (SW_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, HIGH);
 
-  digitalWrite(PISTON_PL_INPUT_ROW_PIN, LOW);
-  if (PORTA<0xff)
-    return (PL_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+  digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, LOW);
+  if (PINA<0xff)
+    return (PL_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, HIGH);
 
-  digitalWrite(PISTON_PR_INPUT_ROW_PIN, LOW);
-  if (PORTA<0xff)
-    return (PR_ROW << ROW_CODE_SHIFT) + (PORTA ^ 0xff);
+  digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, LOW);
+  if (PINA<0xff)
+    return (PR_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, HIGH);
 
   return NO_KEY;
 }
@@ -513,8 +518,7 @@ void describePiston(Piston piston) {
       
     default:
       debugSerial->println("OOPS...UNKNOWN KEY!");
-      break;
-      
+      break;      
   }
 }
 
@@ -564,7 +568,7 @@ int getMemOffset(Piston piston) {
 
 
 void storePiston(Piston piston) {
-  int iPistonMemoryOffset = getMemOffset(piston);
+  unsigned long iPistonMemoryOffset = getMemOffset(piston);
 
   if (iPistonMemoryOffset<0) 
     return;
@@ -610,23 +614,23 @@ void restorePiston(Piston piston) {
 
   switch (piston) {
     case pbSW1 ... pbSW4:
-      driver_SW_PD->send(iRestoreDivValue, stopState->swell,      // SW
+      driver_SW_PD->send(iRestoreDivValue, stopState->swell,   // SW
                          stopState->pedal, stopState->pedal);  // PD
       break;
       
     case pbGT1 ... pbGT4:
       driver_CH_GT->send(stopState->chior, stopState->chior,   // CH
-                         iRestoreDivValue, stopState->great);     // GT
+                         iRestoreDivValue, stopState->great);  // GT
       break;
       
     case pbCH1 ... pbCH4:
-      driver_CH_GT->send(iRestoreDivValue, stopState->chior,      // CH
+      driver_CH_GT->send(iRestoreDivValue, stopState->chior,   // CH
                          stopState->great, stopState->great);  // GT
       break;
 
     case pbPD1 ... pbPD4:
       driver_SW_PD->send(stopState->swell, stopState->swell,   // SW
-                         iRestoreDivValue, stopState->pedal);     // PD
+                         iRestoreDivValue, stopState->pedal);  // PD
       break;
       
     case pbKGen1 ... pbKGen4:
@@ -691,17 +695,15 @@ void doPiston(Piston piston) {
     
 
 void normalRun() {
-    unsigned long iGreat = 0;
-    unsigned long iChior = 0;
-    unsigned long iPedal = 0;
-    unsigned long iSwell = 0;
-
     midiReader->readMessages();
 
     Piston piston = getPressedPiston();
+
+   // debugSerial->println(piston);
+    
     Division division = getDivision(piston);
 
-    doPiston(piston);
+ //   doPiston(piston);
     
     describeDivision(division);
     describePiston(piston);
@@ -709,9 +711,9 @@ void normalRun() {
 
 
 void loop() {
-  int iStop;
-
   while(1) {
+ //   int iStop;
+
     driver_CH_GT->setAllOff();
     driver_SW_PD->setAllOff();
 
@@ -724,15 +726,17 @@ void loop() {
         break;  
   
       case tmSequential:
+        int iStop;
+        
         iStop=1;
         
         // could use MAX_DIV_STOPS instead but we don't have that many stops
         for (int i=0; i<15; i++) 
         {
-          driver_CH_GT->send(iStop, 0,   // CH
-                             iStop>>2, 0);  // GT
-          driver_SW_PD->send(iStop, 0,   // SW
-                             iStop>>2, 0);  // PD
+          driver_CH_GT->send(iStop, 0,       // CH
+                             iStop>>2, 0);   // GT
+          driver_SW_PD->send(iStop, 0,       // SW
+                             iStop>>2, 0);   // PD
 
           delay(STOP_DRIVE_TIME_MS);
           
@@ -763,11 +767,11 @@ void loop() {
           
           delay(1000);
 
-          driver_CH_GT->send(0, 0,   // CH
-                             0, 0);  // GT
+          driver_CH_GT->send(0, 0xffffffff,   // CH
+                             0, 0xffffffff);  // GT
 
-          driver_SW_PD->send(0, 0,   // SW
-                             0, 0);  // PD
+          driver_SW_PD->send(0, 0xffffffff,   // SW
+                             0, 0xffffffff);  // PD
 
           delay(STOP_DRIVE_TIME_MS);
           
@@ -776,20 +780,6 @@ void loop() {
           
           delay(1000);
         }
-        break;
-        
-  /*
-      case tmLowLevelCycle:
-        driver_CH_GT->testSetAllActive();
-        delay(STOP_DRIVE_TIME_MS);
-        driver_CH_GT->setAllOff();
-        delay(500);
-      
-        driver_CH_GT->testSetAllInactive();
-        delay(STOP_DRIVE_TIME_MS);
-        driver_CH_GT->setAllOff();
-        delay(500);
-  
         break;
         
       case tmCycleAll: 
@@ -808,10 +798,10 @@ void loop() {
         delay(1000);
       
         debugSerial->print("PART OFF:  ");
-        driver_CH_GT->send(0, 0,   // CH
-                           0, 0);  // GT
-        driver_SW_PD->send(0, 0,   // SW
-                           0, 0);  // PD
+        driver_CH_GT->send(0, 0xffffffff,   // CH
+                           0, 0xffffffff);  // GT
+        driver_SW_PD->send(0, 0xffffffff,   // SW
+                           0, 0xffffffff);  // PD
                            
         delay(STOP_DRIVE_TIME_MS);
       
@@ -820,54 +810,8 @@ void loop() {
       
         delay(1000);
         break;
-      
-      case tmCycleLeft:
-        debugSerial->print("PART ON:   ");
-        //2048, 1
-        driver_CH_GT->send((unsigned long) 0xffffffff, 0,   // CH
-                           (unsigned long) 0xffffffff, 0);  // GT
-      
-        delay(STOP_DRIVE_TIME_MS);
-      
-        driver_CH_GT->setAllOff();
-                             
-        delay(1000);
-      
-        debugSerial->print("PART OFF:  ");
-        driver_CH_GT->send(0, 0,   // CH
-                           0, 0);  // GT
-                           
-        delay(STOP_DRIVE_TIME_MS);
-      
-        driver_CH_GT->setAllOff();
-      
-        delay(1000);
-        break;
-      
-      case tmCycleRight:  
-        debugSerial->print("PART ON:   ");
-        //2048, 1
-        driver_SW_PD->send((unsigned long) 0xffffffff, 0,   // SW
-                           (unsigned long) 0xffffffff, 0);  // PD
-      
-        delay(STOP_DRIVE_TIME_MS);
-      
-        driver_SW_PD->setAllOff();
-                             
-        delay(1000);
-      
-        debugSerial->print("PART OFF:  ");
-        driver_SW_PD->send(0, 0,   // SW
-                           0, 0);  // PD
-                           
-        delay(STOP_DRIVE_TIME_MS);
-      
-        driver_SW_PD->setAllOff();
-      
-        delay(1000);
-        break;  */
-    }  
-  }
+      }
   
-  flashHeartbeatLED();
+    flashHeartbeatLED();
+  }
 }
