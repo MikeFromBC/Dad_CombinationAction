@@ -10,6 +10,8 @@
 #define MIDI_BOARD_SWITCH_D3  3
 #define MIDI_BOARD_SWITCH_D4  4
 
+#define RIBBON_CABLE_RC_DELAY_US 100
+
 #define MIDI_BOARD_SWITCH_PROG MIDI_BOARD_SWITCH_D2  
 #define MIDI_BOARD_SWITCH_RECALL MIDI_BOARD_SWITCH_D3
 #define MIDI_BOARD_SWITCH_CLEAR MIDI_BOARD_SWITCH_D4
@@ -35,19 +37,19 @@
 #define NO_KEY 0
 
 #define PISTON_OFFSET_ERROR -1
-#define SW_1  ((SW_ROW << ROW_CODE_SHIFT) + 1) 
+#define SW_1  ((SW_ROW << ROW_CODE_SHIFT) + 4) 
 #define SW_2  ((SW_ROW << ROW_CODE_SHIFT) + 2) 
-#define SW_3  ((SW_ROW << ROW_CODE_SHIFT) + 4) 
+#define SW_3  ((SW_ROW << ROW_CODE_SHIFT) + 1) 
 #define SW_4  ((SW_ROW << ROW_CODE_SHIFT) + 8) 
 
 #define GT_GEN_1  ((GT_ROW << ROW_CODE_SHIFT) + 1)  
-#define GT_GEN_2  ((GT_ROW << ROW_CODE_SHIFT) + 2) 
-#define GT_GEN_3  ((GT_ROW << ROW_CODE_SHIFT) + 4) 
-#define GT_GEN_4  ((GT_ROW << ROW_CODE_SHIFT) + 8)
+#define GT_GEN_2  ((GT_ROW << ROW_CODE_SHIFT) + 128) 
+#define GT_GEN_3  ((GT_ROW << ROW_CODE_SHIFT) + 64) 
+#define GT_GEN_4  ((GT_ROW << ROW_CODE_SHIFT) + 32)
 #define GT_1      ((GT_ROW << ROW_CODE_SHIFT) + 16)
-#define GT_2      ((GT_ROW << ROW_CODE_SHIFT) + 32)
-#define GT_3      ((GT_ROW << ROW_CODE_SHIFT) + 64)
-#define GT_4      ((GT_ROW << ROW_CODE_SHIFT) + 128)
+#define GT_2      ((GT_ROW << ROW_CODE_SHIFT) + 8)
+#define GT_3      ((GT_ROW << ROW_CODE_SHIFT) + 4)
+#define GT_4      ((GT_ROW << ROW_CODE_SHIFT) + 2)
 
 #define CH_GENSET ((CH_ROW << ROW_CODE_SHIFT) + 1)   /* special; not in matrix */
 #define CH_1      ((CH_ROW << ROW_CODE_SHIFT) + 2)
@@ -62,11 +64,11 @@
 #define PD_GEN_4          ((PL_ROW << ROW_CODE_SHIFT) + 8)
 #define PD_SW_TO_GT_CPL   ((PL_ROW << ROW_CODE_SHIFT) + 16)
 
-#define PD_1             ((PR_ROW << ROW_CODE_SHIFT) + 1)
-#define PD_2             ((PR_ROW << ROW_CODE_SHIFT) + 2)
-#define PD_3             ((PR_ROW << ROW_CODE_SHIFT) + 3)
-#define PD_4             ((PR_ROW << ROW_CODE_SHIFT) + 4)
-#define PD_GT_TO_PD_CPL  ((PR_ROW << ROW_CODE_SHIFT) + 16)
+#define PD_1             ((PR_ROW << ROW_CODE_SHIFT) + 2)
+#define PD_2             ((PR_ROW << ROW_CODE_SHIFT) + 4)
+#define PD_3             ((PR_ROW << ROW_CODE_SHIFT) + 8)
+#define PD_4             ((PR_ROW << ROW_CODE_SHIFT) + 16)
+#define PD_GT_TO_PD_CPL  ((PR_ROW << ROW_CODE_SHIFT) + 1)
 #define PD_FULL_ORGAN    ((PR_ROW << ROW_CODE_SHIFT) + 32)
 
 #define DIVISIONS 4
@@ -127,6 +129,10 @@ void setup() {
   pinMode(PISTON_PR_OUTPUT_ROW_PIN, OUTPUT);
 
   pinMode(SET_PISTON_INPUT_PIN, INPUT_PULLUP);
+  pinMode(37, INPUT_PULLUP);
+  pinMode(36, INPUT_PULLUP);
+  pinMode(35, INPUT_PULLUP);
+  pinMode(34, INPUT_PULLUP);
 
   // port A is an input with pullup
   DDRA  = B00000000;
@@ -195,6 +201,18 @@ void handleCommands() {
 }
 
 
+int readRow(int iRowValue) {
+  delayMicroseconds(RIBBON_CABLE_RC_DELAY_US);
+  
+  byte iValue = PINA ^ 0xff;
+  
+  if (iValue>0)
+    return (int) (iRowValue << ROW_CODE_SHIFT) + iValue;
+    else
+    return 0;
+}
+
+
 int readScanCode() {
   digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, HIGH);  // unnecessary
   digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, HIGH);
@@ -202,29 +220,36 @@ int readScanCode() {
   digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, HIGH);
   digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, HIGH);
 
+  int iValue;
+  
   digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, LOW);
-  if (PINA<0xff)
-    return (GT_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  iValue = readRow(GT_ROW);
+  if (iValue>0)
+    return iValue;
   digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, LOW);
-  if (PINA<0xff)
-    return (CH_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  iValue = readRow(CH_ROW);
+  if (iValue>0)
+    return iValue;
   digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, LOW);
-  if (PINA<0xff)
-    return (SW_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  iValue = readRow(SW_ROW);
+  if (iValue>0)
+    return iValue;
   digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, LOW);
-  if (PINA<0xff)
-    return (PL_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  iValue = readRow(PL_ROW);
+  if (iValue>0)
+    return iValue;
   digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, LOW);
-  if (PINA<0xff)
-    return (PR_ROW << ROW_CODE_SHIFT) + (PINA ^ 0xff);
+  iValue = readRow(PR_ROW);
+  if (iValue>0)
+    return iValue;
   digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, HIGH);
 
   return NO_KEY;
@@ -233,6 +258,13 @@ int readScanCode() {
 
 Piston getPressedPiston() {
    int iScanCode = readScanCode();
+
+//   debugSerial->print("RawCode:  " );
+//   debugSerial->print(PINA, HEX);
+//   debugSerial->print("    " );
+
+   debugSerial->print("ScanCode:  " );
+   debugSerial->println(iScanCode, HEX);
 
    switch (iScanCode) {
      case NO_KEY:
@@ -368,22 +400,22 @@ void describeDivision(Division division) {
       break;
       
     case diChior:
-      debugSerial->println("diChior");
+      debugSerial->print("diChior");
       break;
       
     case diPedal:
-      debugSerial->println("diPedal");
+      debugSerial->print("diPedal");
       break;
       
     case diGeneral:
-      debugSerial->println("diGeneral");
+      debugSerial->print("diGeneral");
       break;
       
     case diOther:
-      debugSerial->println("diOther");
+      debugSerial->print("diOther");
       break;
       
-    default: debugSerial->println("UNKNOWN DIVISION!");
+    default: debugSerial->print("UNKNOWN DIVISION!");
   }
 }
 
@@ -554,7 +586,7 @@ int getPistonMemOffset(Piston piston) {
 
 
 int getMemoryPos() {
-  return 0;
+  return (PINC & 0x0f) ^ 0x0f;
 }
 
 int getMemOffset(Piston piston) {
@@ -573,6 +605,11 @@ void storePiston(Piston piston) {
   if (iPistonMemoryOffset<0) 
     return;
   
+  debugSerial->print("storing to ");
+  debugSerial->print(iPistonMemoryOffset); 
+  debugSerial->print(" for ");
+  describePiston(piston);
+
   switch (piston) {
     case pbSW1 ... pbSW4:
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->swell);
@@ -612,6 +649,13 @@ void restorePiston(Piston piston) {
     
   long iRestoreDivValue = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
 
+  debugSerial->print("restoring value (div only) ");
+  debugSerial->print(iRestoreDivValue, HEX); 
+  debugSerial->print(" from ");
+  debugSerial->print(iPistonMemoryOffset); 
+  debugSerial->print(" for ");
+  describePiston(piston);
+  
   switch (piston) {
     case pbSW1 ... pbSW4:
       driver_SW_PD->send(iRestoreDivValue, stopState->swell,   // SW
@@ -647,7 +691,6 @@ void restorePiston(Piston piston) {
 
       driver_SW_PD->send(iSwell, stopState->swell,   // SW
                          iPedal, stopState->pedal);  // PD
-
       break;
   }
 
@@ -659,38 +702,45 @@ void restorePiston(Piston piston) {
 
 
 bool getStore() {
-  return digitalRead(SET_PISTON_INPUT_PIN);
+  digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, LOW);
+  delayMicroseconds(RIBBON_CABLE_RC_DELAY_US);
+  
+  bool bSet = !digitalRead(SET_PISTON_INPUT_PIN);
+  digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, HIGH);
+
+  return bSet;
 }
 
 void doPiston(Piston piston) {
-  if (getStore()) 
-    storePiston(piston);
-    else
-    restorePiston(piston);
-
-  switch (piston) {
-    case pbSWToGTCoupler:
-      break;
-      
-    case pbGTToPDCoupler:
-      break;
-      
-    case pbFullOrgan:
-      break;
-      
-    case pbGenCan:
-      driver_CH_GT->send(0, stopState->chior,   // CH
-                         0, stopState->great);  // GT
-
-      driver_SW_PD->send(0, stopState->swell,   // SW
-                         0, stopState->pedal);  // PD
-
-      delay(STOP_DRIVE_TIME_MS);
-      
-      driver_CH_GT->setAllOff();
-      driver_SW_PD->setAllOff();
-      break;
-  }
+  if (piston != pbNone) 
+    if (getStore()) 
+      storePiston(piston);
+      else
+      restorePiston(piston);
+  
+    switch (piston) {
+      case pbSWToGTCoupler:
+        break;
+        
+      case pbGTToPDCoupler:
+        break;
+        
+      case pbFullOrgan:
+        break;
+        
+      case pbGenCan:
+        driver_CH_GT->send(0, stopState->chior,   // CH
+                           0, stopState->great);  // GT
+  
+        driver_SW_PD->send(0, stopState->swell,   // SW
+                           0, stopState->pedal);  // PD
+  
+        delay(STOP_DRIVE_TIME_MS);
+        
+        driver_CH_GT->setAllOff();
+        driver_SW_PD->setAllOff();
+        break;
+    }
 }
     
 
@@ -703,10 +753,16 @@ void normalRun() {
     
     Division division = getDivision(piston);
 
- //   doPiston(piston);
+    doPiston(piston);
     
     describeDivision(division);
+    debugSerial->print("    ");
     describePiston(piston);
+
+    if (getStore()) 
+      debugSerial->println("STORE!");
+      else
+      debugSerial->println("/store");
 }  // normalRun
 
 
