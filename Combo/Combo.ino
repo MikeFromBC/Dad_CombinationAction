@@ -10,6 +10,7 @@
 #define MIDI_BOARD_SWITCH_D3  3
 #define MIDI_BOARD_SWITCH_D4  4
 
+// RC constant of switches combined with ribbon cable capacitance isn't great; slow down our signal
 #define RIBBON_CABLE_RC_DELAY_US 100
 
 #define MIDI_BOARD_SWITCH_PROG MIDI_BOARD_SWITCH_D2  
@@ -129,6 +130,8 @@ void setup() {
   pinMode(PISTON_PR_OUTPUT_ROW_PIN, OUTPUT);
 
   pinMode(SET_PISTON_INPUT_PIN, INPUT_PULLUP);
+
+  // lower 4 bits on port C are for the memory switch
   pinMode(37, INPUT_PULLUP);
   pinMode(36, INPUT_PULLUP);
   pinMode(35, INPUT_PULLUP);
@@ -138,15 +141,6 @@ void setup() {
   DDRA  = B00000000;
   PORTA = B11111111;
   
-  pinMode(22, INPUT_PULLUP);
-  pinMode(23, INPUT_PULLUP);
-  pinMode(24, INPUT_PULLUP);
-  pinMode(25, INPUT_PULLUP);
-  pinMode(26, INPUT_PULLUP);
-  pinMode(27, INPUT_PULLUP);
-  pinMode(28, INPUT_PULLUP);
-  pinMode(29, INPUT_PULLUP);
-
   stopState = new StopState();
   midiReader = new MidiReader(stopState);
 
@@ -224,33 +218,33 @@ int readScanCode() {
   
   digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, LOW);
   iValue = readRow(GT_ROW);
+  digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, HIGH);
   if (iValue>0)
     return iValue;
-  digitalWrite(PISTON_GT_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, LOW);
   iValue = readRow(CH_ROW);
+  digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, HIGH);
   if (iValue>0)
     return iValue;
-  digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, LOW);
   iValue = readRow(SW_ROW);
+  digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, HIGH);
   if (iValue>0)
     return iValue;
-  digitalWrite(PISTON_SW_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, LOW);
   iValue = readRow(PL_ROW);
+  digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, HIGH);
   if (iValue>0)
     return iValue;
-  digitalWrite(PISTON_PL_OUTPUT_ROW_PIN, HIGH);
 
   digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, LOW);
   iValue = readRow(PR_ROW);
+  digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, HIGH);
   if (iValue>0)
     return iValue;
-  digitalWrite(PISTON_PR_OUTPUT_ROW_PIN, HIGH);
 
   return NO_KEY;
 }
@@ -263,8 +257,8 @@ Piston getPressedPiston() {
 //   debugSerial->print(PINA, HEX);
 //   debugSerial->print("    " );
 
-   debugSerial->print("ScanCode:  " );
-   debugSerial->println(iScanCode, HEX);
+//   debugSerial->print("ScanCode:  " );
+//   debugSerial->println(iScanCode, HEX);
 
    switch (iScanCode) {
      case NO_KEY:
@@ -586,6 +580,7 @@ int getPistonMemOffset(Piston piston) {
 
 
 int getMemoryPos() {
+  // note that switch is wired in a funny way such that 0 is last when it should be first:  1..11, 0
   return (PINC & 0x0f) ^ 0x0f;
 }
 
@@ -602,10 +597,11 @@ int getMemOffset(Piston piston) {
 void storePiston(Piston piston) {
   unsigned long iPistonMemoryOffset = getMemOffset(piston);
 
+  // invalid address
   if (iPistonMemoryOffset<0) 
     return;
   
-  debugSerial->print("storing to ");
+  debugSerial->print("Storing to ");
   debugSerial->print(iPistonMemoryOffset); 
   debugSerial->print(" for ");
   describePiston(piston);
@@ -638,18 +634,22 @@ void storePiston(Piston piston) {
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->pedal);
       break;
   }
+
+  // generous debounce
+  delay(300);
 }
 
 
 void restorePiston(Piston piston) {
   unsigned long iPistonMemoryOffset = getMemOffset(piston);
 
+  // invalid address
   if (iPistonMemoryOffset<0) 
     return;
     
   long iRestoreDivValue = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
 
-  debugSerial->print("restoring value (div only) ");
+  debugSerial->print("Restoring value (div only) ");
   debugSerial->print(iRestoreDivValue, HEX); 
   debugSerial->print(" from ");
   debugSerial->print(iPistonMemoryOffset); 
@@ -698,10 +698,13 @@ void restorePiston(Piston piston) {
   
   driver_CH_GT->setAllOff();
   driver_SW_PD->setAllOff();
+
+  // generous debounce
+  delay(200);
 }
 
 
-bool getStore() {
+bool getStorePistonState() {
   digitalWrite(PISTON_CH_OUTPUT_ROW_PIN, LOW);
   delayMicroseconds(RIBBON_CABLE_RC_DELAY_US);
   
@@ -712,57 +715,52 @@ bool getStore() {
 }
 
 void doPiston(Piston piston) {
-  if (piston != pbNone) 
-    if (getStore()) 
-      storePiston(piston);
-      else
-      restorePiston(piston);
-  
-    switch (piston) {
-      case pbSWToGTCoupler:
-        break;
-        
-      case pbGTToPDCoupler:
-        break;
-        
-      case pbFullOrgan:
-        break;
-        
-      case pbGenCan:
-        driver_CH_GT->send(0, stopState->chior,   // CH
-                           0, stopState->great);  // GT
-  
-        driver_SW_PD->send(0, stopState->swell,   // SW
-                           0, stopState->pedal);  // PD
-  
-        delay(STOP_DRIVE_TIME_MS);
-        
-        driver_CH_GT->setAllOff();
-        driver_SW_PD->setAllOff();
-        break;
-    }
+  if (getStorePistonState()) 
+    storePiston(piston);
+    else
+    restorePiston(piston);
+
+  switch (piston) {
+    case pbSWToGTCoupler:
+      break;
+      
+    case pbGTToPDCoupler:
+      break;
+      
+    case pbFullOrgan:
+      break;
+      
+    case pbGenCan:
+      driver_CH_GT->send(0, stopState->chior,   // CH
+                         0, stopState->great);  // GT
+
+      driver_SW_PD->send(0, stopState->swell,   // SW
+                         0, stopState->pedal);  // PD
+
+      delay(STOP_DRIVE_TIME_MS);
+      
+      driver_CH_GT->setAllOff();
+      driver_SW_PD->setAllOff();
+      break;
+  }
 }
     
 
 void normalRun() {
-    midiReader->readMessages();
+  midiReader->readMessages();
 
-    Piston piston = getPressedPiston();
+  Piston piston = getPressedPiston();
 
-   // debugSerial->println(piston);
+  if (piston != pbNone) {
+    // debugSerial->println(piston);
     
     Division division = getDivision(piston);
-
-    doPiston(piston);
-    
     describeDivision(division);
     debugSerial->print("    ");
     describePiston(piston);
 
-    if (getStore()) 
-      debugSerial->println("STORE!");
-      else
-      debugSerial->println("/store");
+    doPiston(piston);
+  }
 }  // normalRun
 
 

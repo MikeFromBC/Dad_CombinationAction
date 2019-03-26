@@ -70,7 +70,7 @@ void MidiReader::readMessages() {
                 break;
           }  // switch iDiv
 
-          stopState->debug_ShowAllStopStates("normal");
+          //stopState->debug_ShowAllStopStates("normal");
         }  // case
         break;  
     }  // switch msg type 
