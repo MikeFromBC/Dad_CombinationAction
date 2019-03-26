@@ -683,12 +683,14 @@ void restorePiston(Piston piston) {
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
       long iGreat = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
-      long iSwell = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
-      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
-      long iPedal = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+
       driver_CH_GT->send(iChior, stopState->chior,   // CH
                          iGreat, stopState->great);  // GT
 
+      long iSwell = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+      iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
+      long iPedal = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
+      
       driver_SW_PD->send(iSwell, stopState->swell,   // SW
                          iPedal, stopState->pedal);  // PD
       break;
