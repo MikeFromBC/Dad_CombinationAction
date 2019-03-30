@@ -637,7 +637,7 @@ void storePiston(Piston piston) {
   }
 
   // generous debounce
-  delay(300);
+  stopDelay(300);
 }
 
 
@@ -697,13 +697,13 @@ void restorePiston(Piston piston) {
       break;
   }
 
-  delay(STOP_DRIVE_TIME_MS);
+  stopDelay(STOP_DRIVE_TIME_MS);
   
   driver_CH_GT->setAllOff();
   driver_SW_PD->setAllOff();
 
   // generous debounce
-  delay(200);
+  stopDelay(200);
 }
 
 
@@ -740,7 +740,7 @@ void doPiston(Piston piston) {
       driver_SW_PD->send(0, stopState->swell,   // SW
                          0, stopState->pedal);  // PD
 
-      delay(STOP_DRIVE_TIME_MS);
+      stopDelay(STOP_DRIVE_TIME_MS);
       
       driver_CH_GT->setAllOff();
       driver_SW_PD->setAllOff();
@@ -765,6 +765,15 @@ void normalRun() {
     doPiston(piston);
   }
 }  // normalRun
+
+
+void stopDelay(int iDelayMS) {
+  unsigned long iStart = millis();
+  unsigned long iEnd = iStart + iDelayMS;
+  while (millis() < iEnd) {
+    midiReader->readMessages();   
+  }
+}
 
 
 void loop() {
