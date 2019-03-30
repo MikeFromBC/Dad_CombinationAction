@@ -85,16 +85,18 @@ void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState
   // always load MSB...LSB
   const unsigned long OUTPUT_MASK = 0x80000000;
 
-//debugSerial->print("INPUT ");
-//debugSerial->print(iDivStops, HEX);
+debugSerial->print("REQ ");
+debugSerial->print(iDivStops, HEX);
+debugSerial->print(" ACTUAL ");
+debugSerial->println(iDivStopState, HEX);
 
   unsigned long iActivate = calcActivation(iDivStops, iDivStopState);
   unsigned long iDeactivate = calcDeactivation(iDivStops, iDivStopState);
 
-//debugSerial->print("   ACT ");
-//debugSerial->print(iActivate, HEX);
-//debugSerial->print("   DEACT ");
-//debugSerial->println(iDeactivate, HEX);
+debugSerial->print("   ACT ");
+debugSerial->print(iActivate, HEX);
+debugSerial->print("   DEACT ");
+debugSerial->println(iDeactivate, HEX);
 
   if (iActivate & iDeactivate > 0) {
       Serial.println("OH NO!  WE'RE TRYING TO ACTIVATE AND DEACTIVATE AT THE SAME TIME!  Turning off deactivation.");
