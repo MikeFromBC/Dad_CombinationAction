@@ -102,12 +102,18 @@ StopDriver* driver_CH_GT;
 StopDriver* driver_SW_PD;
 MidiReader* midiReader;
 
+char caCommandBuffer[50];
+char* pCommandBufferNextChar;
+
 enum TestMode {tmNormal, tmSequential, tmCycleAll, tmCustom};
 
 TestMode eTestMode = tmNormal;  
 bool bDebug = false;
 
-String sCommandBuffer;
+void resetCommandBuffer() {
+  pCommandBufferNextChar = &caCommandBuffer[0];
+  *pCommandBufferNextChar=0;
+}
 
 void setup() {
   debugSerial = &SoftwareSerial(DEBUG_RX_PORT, DEBUG_TX_PORT);
@@ -115,9 +121,8 @@ void setup() {
   debugSerial->begin(19200);
   debugSerial->println("Starting...");
 
-  sCommandBuffer.reserve(50);
-  sCommandBuffer = "";
-
+  resetCommandBuffer();
+  
   pinMode(HEART_BEAT_LED, OUTPUT);
 
   pinMode(MIDI_BOARD_SWITCH_PROG, INPUT_PULLUP);
@@ -155,7 +160,7 @@ void setup() {
 }
 
 
-void handleCommands() {
+void handleCommands() { 
   while (debugSerial->available() > 0) {
     // get incoming byte:
     char c = debugSerial->read();
@@ -165,33 +170,37 @@ void handleCommands() {
       continue;
 
     if (c == 13) {
-      debugSerial->print("Executing command:  ");
-      debugSerial->println(sCommandBuffer);
-
-      if (sCommandBuffer.equalsIgnoreCase("Normal")) {
+      char* pCommandBuffer = &caCommandBuffer[0];
+      
+      if (strcmp(pCommandBuffer, "Normal")==0) {
         eTestMode = tmNormal;
         debugSerial->println("Normal mode selected");
-      } else if (sCommandBuffer.equalsIgnoreCase("Custom")) {
+      } else if (strcmp(pCommandBuffer, "Custom")==0) {
         eTestMode = tmCustom;
         debugSerial->println("Custom test mode selected");
-      } else if (sCommandBuffer.equalsIgnoreCase("Seq")) {
+      } else if (strcmp(pCommandBuffer, "Seq")==0) {
         eTestMode = tmSequential;
         debugSerial->println("Sequential mode selected");
-      } else if (sCommandBuffer.equalsIgnoreCase("CycleAll")) {
+      } else if (strcmp(pCommandBuffer, "CycleAll")==0) {
         eTestMode = tmCycleAll;
         debugSerial->println("Cycle All mode selected");
-      } else if (sCommandBuffer.equalsIgnoreCase("DebugOn")) {
+      } else if (strcmp(pCommandBuffer, "DebugOn")==0) {
         bDebug = true;
         debugSerial->println("Debug is now on");
-      } else if (sCommandBuffer.equalsIgnoreCase("DebugOff")) {
+      } else if (strcmp(pCommandBuffer, "DebugOff")==0) {
         bDebug = false;
         debugSerial->println("Debug is now off");
-      } else
-        debugSerial->println("Unrecognized command!");  
+      } else {        debugSerial->print("Unrecognized command:  ");  
+        debugSerial->print("Unrecognized command:  ");  
+        debugSerial->println(pCommandBuffer);  
+      }
 
-      sCommandBuffer = "";  
-    } else
-      sCommandBuffer+=c;
+      resetCommandBuffer();
+    } else {
+      *pCommandBufferNextChar = c;
+      pCommandBufferNextChar++;
+      *pCommandBufferNextChar=0;
+    }
   }
 }
 
