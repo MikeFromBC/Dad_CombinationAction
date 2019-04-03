@@ -67,50 +67,20 @@ void StopDriver::pulseSemaphoreValue()
 }
 
 
-unsigned long StopDriver::calcActivation(unsigned long iDivStops, unsigned long iDivStopState) {
-    // don't bother activating stops that don't require activation
-    return iDivStops;  // optimize:  & (iDivStops ^ iDivStopState);
-}
-
-
-unsigned long StopDriver::calcDeactivation(unsigned long iDivStops, unsigned long iDivStopState) {
-    // don't bother deactivating stops that don't require deactivation
-    return calcActivation(iDivStops ^ (unsigned long) 0xffffffff, iDivStopState ^ (unsigned long) 0xffffffff);
-}
-
-
 void StopDriver::sendDataEx(unsigned long iDivStops, unsigned long iDivStopState, byte iSkipUpperBits) {
 //  Serial.println(iDivStops);
 
   // always load MSB...LSB
   const unsigned long OUTPUT_MASK = 0x80000000;
 
-debugSerial->print("REQ ");
-debugSerial->print(iDivStops, HEX);
-debugSerial->print(" ACTUAL ");
-debugSerial->println(iDivStopState, HEX);
-
-  unsigned long iActivate = calcActivation(iDivStops, iDivStopState);
-  unsigned long iDeactivate = calcDeactivation(iDivStops, iDivStopState);
-
-debugSerial->print("   ACT ");
-debugSerial->print(iActivate, HEX);
-debugSerial->print("   DEACT ");
-debugSerial->println(iDeactivate, HEX);
-
-  if (iActivate & iDeactivate > 0) {
-      Serial.println("OH NO!  WE'RE TRYING TO ACTIVATE AND DEACTIVATE AT THE SAME TIME!  Turning off deactivation.");
-      iDeactivate = 0;
-  }
+  unsigned long iActivate = iDivStops;
+  unsigned long iDeactivate = iDivStops ^ 0xffffffff;
 
   int iBitsAlreadyShiftedOut = 0;
 
   // highest bits go first
   for (int i=MAX_DIV_STOPS - 1; i>=0; i--) 
   {
-//    Serial.print(result);
-//    Serial.println(iDivStops);
-
     if (iBitsAlreadyShiftedOut >= m_iSkipUpperBits) {
       // possibly deactivate stop; deactivate bit loaded first
       if (iDeactivate & OUTPUT_MASK) 
@@ -123,15 +93,12 @@ debugSerial->println(iDeactivate, HEX);
       clockOutput();
   
       // possibly activate stop; activate bit loaded last
-      if (iActivate & OUTPUT_MASK) {
+      if (iActivate & OUTPUT_MASK) 
         // energise
         digitalWrite(m_iDataPortBit, HIGH); 
-        //debugSerial->print("1");
-      } else {
+        else 
         // de-energise
         digitalWrite(m_iDataPortBit, LOW); 
-        //debugSerial->print("0");
-      }
       
       clockOutput();
     }

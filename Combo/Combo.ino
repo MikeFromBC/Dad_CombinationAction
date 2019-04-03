@@ -155,8 +155,6 @@ void setup() {
   // the "41" mentioned below is a port #
   driver_SW_PD = new StopDriver(49, 47, 45, 12, 35);
   driver_CH_GT = new StopDriver(48, 46, 44, 12, 0);  
-//  driver_SW_PD = new StopDriver(37, 39, 41, 12);
-//  driver_CH_GT = new StopDriver(36, 38, 40, 12);  
 }
 
 
@@ -689,6 +687,8 @@ void restorePiston(Piston piston) {
 
   debugSerial->print("Restoring value ");
 
+  midiReader->readMessages();   
+
   switch (piston) {
     case pbSW1 ... pbSW4:
       debugSerial->print(" S:"); 
@@ -936,6 +936,8 @@ void loop() {
         break;
       }
   
-    flashHeartbeatLED();
+    digitalWrite(HEART_BEAT_LED, HIGH);   // turn the LED 
+    stopDelay(100);       
+    digitalWrite(HEART_BEAT_LED, LOW);    
   }
 }

@@ -11,9 +11,6 @@ class StopDriver
     byte m_iSkipUpperBits;
     byte m_iSemaphorePortBit;
 
-    unsigned long calcActivation(unsigned long iDivStops, unsigned long iDivStopState);
-    unsigned long calcDeactivation(unsigned long iDivStops, unsigned long iDivStopState);
-
     void sendDataEx(unsigned long iDivStops, unsigned long iDivStopState, byte iSkipUpperBits);
     void clockOutput();
   public:
