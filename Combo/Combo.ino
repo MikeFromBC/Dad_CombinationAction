@@ -609,67 +609,67 @@ void storePiston(Piston piston) {
   if (iPistonMemoryOffset<0) 
     return;
   
-  debugSerial->print("Storing to ");
-  debugSerial->print(iPistonMemoryOffset); 
-  debugSerial->print(" for ");
-  describePiston(piston);
+//  debugSerial->print("Storing to ");
+//  debugSerial->print(iPistonMemoryOffset); 
+//  debugSerial->print(" for ");
+//  describePiston(piston);
 
   switch (piston) {
     case pbSW1 ... pbSW4:
-      debugSerial->print(" S:"); 
-      debugSerial->print(stopState->swell, HEX); 
+//      debugSerial->print(" S:"); 
+//      debugSerial->print(stopState->swell, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->swell);
 
-      debugSerial->print(" (P:"); 
-      debugSerial->print(stopState->pedal, HEX); 
-      debugSerial->print(")"); 
+//      debugSerial->print(" (P:"); 
+//      debugSerial->print(stopState->pedal, HEX); 
+//      debugSerial->print(")"); 
       break;
       
     case pbGT1 ... pbGT4:
-      debugSerial->print(" G:"); 
-      debugSerial->print(stopState->great, HEX); 
+//      debugSerial->print(" G:"); 
+//      debugSerial->print(stopState->great, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->great);
       break;
       
     case pbCH1 ... pbCH4:
-      debugSerial->print(" C:"); 
-      debugSerial->print(stopState->chior, HEX); 
+//      debugSerial->print(" C:"); 
+//      debugSerial->print(stopState->chior, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->chior);
       break;
 
     case pbPD1 ... pbPD4:
-      debugSerial->print(" P:"); 
-      debugSerial->print(stopState->pedal, HEX); 
+//      debugSerial->print(" P:"); 
+//      debugSerial->print(stopState->pedal, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->pedal);
       break;
       
     case pbKGen1 ... pbKGen4:
     case pbPGen1 ... pbPGen4:
-      debugSerial->print(" C:"); 
-      debugSerial->print(stopState->chior, HEX); 
+//      debugSerial->print(" C:"); 
+//      debugSerial->print(stopState->chior, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->chior);
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
       
-      debugSerial->print(" G:"); 
-      debugSerial->print(stopState->great, HEX); 
+//      debugSerial->print(" G:"); 
+//      debugSerial->print(stopState->great, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->great);
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
       
-      debugSerial->print(" S:"); 
-      debugSerial->print(stopState->swell, HEX); 
+//      debugSerial->print(" S:"); 
+//      debugSerial->print(stopState->swell, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->swell);
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
       
-      debugSerial->print(" P:"); 
-      debugSerial->print(stopState->pedal, HEX); 
+//      debugSerial->print(" P:"); 
+//      debugSerial->print(stopState->pedal, HEX); 
       eeprom_write_dword((unsigned long*) iPistonMemoryOffset, stopState->pedal);
       break;
   }
 
-  debugSerial->print(" to ");
-  debugSerial->print(iPistonMemoryOffset); 
-  debugSerial->print(" for ");
-  describePiston(piston);
+//  debugSerial->print(" to ");
+//  debugSerial->print(iPistonMemoryOffset); 
+//  debugSerial->print(" for ");
+//  describePiston(piston);
 
   // generous debounce
   stopDelay(300);
@@ -682,41 +682,43 @@ void restorePiston(Piston piston) {
   // invalid address
   if (iPistonMemoryOffset<0) 
     return;
+
+//  debugSerial->println(iPistonMemoryOffset); 
     
   long iRestoreDivValue = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
 
-  debugSerial->print("Restoring value ");
+//  debugSerial->print("Restoring value ");
 
   midiReader->readMessages();   
 
   switch (piston) {
     case pbSW1 ... pbSW4:
-      debugSerial->print(" S:"); 
-      debugSerial->print(iRestoreDivValue, HEX); 
-      debugSerial->print(" (P:"); 
-      debugSerial->print(stopState->pedal, HEX); 
-      debugSerial->print(")"); 
+//      debugSerial->print(" S:"); 
+//      debugSerial->print(iRestoreDivValue, HEX); 
+//      debugSerial->print(" (P:"); 
+//      debugSerial->print(stopState->pedal, HEX); 
+//      debugSerial->print(")"); 
       driver_SW_PD->send(iRestoreDivValue, stopState->swell,   // SW
                          stopState->pedal, stopState->pedal);  // PD
       break;
       
     case pbGT1 ... pbGT4:
-      debugSerial->print(" G:"); 
-      debugSerial->print(iRestoreDivValue, HEX); 
+//      debugSerial->print(" G:"); 
+//      debugSerial->print(iRestoreDivValue, HEX); 
       driver_CH_GT->send(stopState->chior, stopState->chior,   // CH
                          iRestoreDivValue, stopState->great);  // GT
       break;
       
     case pbCH1 ... pbCH4:
-      debugSerial->print(" C:"); 
-      debugSerial->print(iRestoreDivValue, HEX); 
+//      debugSerial->print(" C:"); 
+//      debugSerial->print(iRestoreDivValue, HEX); 
       driver_CH_GT->send(iRestoreDivValue, stopState->chior,   // CH
                          stopState->great, stopState->great);  // GT
       break;
 
     case pbPD1 ... pbPD4:
-      debugSerial->print(" P:"); 
-      debugSerial->print(iRestoreDivValue, HEX); 
+//      debugSerial->print(" P:"); 
+//      debugSerial->print(iRestoreDivValue, HEX); 
       driver_SW_PD->send(stopState->swell, stopState->swell,   // SW
                          iRestoreDivValue, stopState->pedal);  // PD
       break;
@@ -724,36 +726,36 @@ void restorePiston(Piston piston) {
     case pbKGen1 ... pbKGen4:
     case pbPGen1 ... pbPGen4:
       long iChior = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
-      debugSerial->print(" C:"); 
-      debugSerial->print(iChior, HEX); 
+//      debugSerial->print(" C:"); 
+//      debugSerial->print(iChior, HEX); 
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
 
       long iGreat = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
-      debugSerial->print(" G:"); 
-      debugSerial->print(iGreat, HEX); 
+//      debugSerial->print(" G:"); 
+//      debugSerial->print(iGreat, HEX); 
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
 
       driver_CH_GT->send(iChior, stopState->chior,   // CH
                          iGreat, stopState->great);  // GT
 
       long iSwell = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
-      debugSerial->print(" S:"); 
-      debugSerial->print(iSwell, HEX); 
+//      debugSerial->print(" S:"); 
+//      debugSerial->print(iSwell, HEX); 
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
 
       long iPedal = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
-      debugSerial->print(" P:"); 
-      debugSerial->print(iPedal, HEX); 
+//      debugSerial->print(" P:"); 
+//      debugSerial->print(iPedal, HEX); 
       
       driver_SW_PD->send(iSwell, stopState->swell,   // SW
                          iPedal, stopState->pedal);  // PD
       break;
   }
 
-  debugSerial->print(" from ");
-  debugSerial->print(iPistonMemoryOffset); 
-  debugSerial->print(" for ");
-  describePiston(piston);
+//  debugSerial->print(" from ");
+//  debugSerial->print(iPistonMemoryOffset); 
+//  debugSerial->print(" for ");
+//  describePiston(piston);
   
   stopDelay(STOP_DRIVE_TIME_MS);
   
@@ -815,10 +817,10 @@ void normalRun() {
   if (piston != pbNone) {
     // debugSerial->println(piston);
     
-    Division division = getDivision(piston);
-    describeDivision(division);
-    debugSerial->print("    ");
-    describePiston(piston);
+//    Division division = getDivision(piston);
+//    describeDivision(division);
+//    debugSerial->print("    ");
+//    describePiston(piston);
 
     doPiston(piston);
   }
@@ -936,8 +938,6 @@ void loop() {
         break;
       }
   
-    digitalWrite(HEART_BEAT_LED, HIGH);   // turn the LED 
-    stopDelay(100);       
-    digitalWrite(HEART_BEAT_LED, LOW);    
+    digitalWrite(HEART_BEAT_LED, (millis() % 500) > 250);   
   }
 }
