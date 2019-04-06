@@ -876,35 +876,29 @@ void loop() {
 
       case tmCustom:
         // could use MAX_DIV_STOPS instead but we don't have that many stops
-        for (int i=0; i<15; i++) 
+       // while (1) 
         {
-          debugSerial->println("(begin)");
-          
-          driver_CH_GT->send(0xffffffff, 0,   // CH
-                             0xffffffff, 0);  // GT
+          debugSerial->println("running1");
 
-          driver_SW_PD->send(0xffffffff, 0,   // SW
-                             0xffffffff, 0);  // PD
+          driver_SW_PD->send(1, 0,   // SW
+                             1, 0);  // PD
 
           delay(STOP_DRIVE_TIME_MS);
           
-          driver_CH_GT->setAllOff();
           driver_SW_PD->setAllOff();
           
           delay(1000);
-
-          driver_CH_GT->send(0, 0xffffffff,   // CH
-                             0, 0xffffffff);  // GT
 
           driver_SW_PD->send(0, 0xffffffff,   // SW
                              0, 0xffffffff);  // PD
 
           delay(STOP_DRIVE_TIME_MS);
           
-          driver_CH_GT->setAllOff();
           driver_SW_PD->setAllOff();
           
           delay(1000);
+  
+          debugSerial->println("running2");
         }
         break;
         
