@@ -107,7 +107,7 @@ enum Piston {pbNone,
              pbKGen1, pbKGen2, pbKGen3, pbKGen4, 
              pbPGen1, pbPGen2, pbPGen3, pbPGen4,
              // other
-             pbSWToGTCoupler, pbGTToPDCoupler, pbFullOrgan,
+             pbToggleSWToGTCoupler, pbToggleGTToPDCoupler, pbToggleFullOrgan,
              pbGenCan};
 
 
@@ -352,7 +352,7 @@ Piston getPressedPiston() {
         return pbPGen4;
         
      case PD_SW_TO_GT_CPL:
-        return pbSWToGTCoupler;
+        return pbToggleSWToGTCoupler;
         
      case PD_1:
         return pbPD1;
@@ -367,10 +367,10 @@ Piston getPressedPiston() {
         return pbPD4;
         
      case PD_GT_TO_PD_CPL:
-        return pbGTToPDCoupler;
+        return pbToggleGTToPDCoupler;
 
      case PD_FULL_ORGAN:
-        return pbFullOrgan;
+        return pbToggleFullOrgan;
 
      default:  return pbNone;
    }
@@ -551,16 +551,16 @@ void describePiston(Piston piston) {
       break;
       
 
-    case pbSWToGTCoupler:
-      debugSerial->println("pbSWToGTCoupler");
+    case pbToggleSWToGTCoupler:
+      debugSerial->println("pbToggleSWToGTCoupler");
       break;
       
-    case pbGTToPDCoupler:
-      debugSerial->println("pbGTToPDCoupler");
+    case pbToggleGTToPDCoupler:
+      debugSerial->println("pbToggleGTToPDCoupler");
       break;
       
-    case pbFullOrgan:
-      debugSerial->println("pbFullOrgan");
+    case pbToggleFullOrgan:
+      debugSerial->println("pbToggleFullOrgan");
       break;
       
     case pbGenCan:
@@ -799,13 +799,13 @@ void doPiston(Piston piston) {
     restorePiston(piston);
 
   switch (piston) {
-    case pbSWToGTCoupler:
+    case pbToggleSWToGTCoupler:
       break;
       
-    case pbGTToPDCoupler:
+    case pbToggleGTToPDCoupler:
       break;
       
-    case pbFullOrgan:
+    case pbToggleFullOrgan:
       break;
       
     case pbGenCan:
