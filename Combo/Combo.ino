@@ -54,7 +54,7 @@
 
 #define NO_KEY 0
 
-#define PISTON_OFFSET_ERROR -1
+#define PISTON_OFFSET_ERROR ((unsigned long) -1)
 #define SW_1  ((SW_ROW << ROW_CODE_SHIFT) + 4) 
 #define SW_2  ((SW_ROW << ROW_CODE_SHIFT) + 2) 
 #define SW_3  ((SW_ROW << ROW_CODE_SHIFT) + 1) 
@@ -623,7 +623,7 @@ void storePiston(Piston piston) {
   unsigned long iPistonMemoryOffset = getMemOffset(piston);
 
   // invalid address
-  if (iPistonMemoryOffset<0) 
+  if (iPistonMemoryOffset == PISTON_OFFSET_ERROR) 
     return;
   
 //  debugSerial->print("Storing to ");
@@ -696,7 +696,7 @@ void restorePiston(Piston piston) {
   unsigned long iPistonMemoryOffset = getMemOffset(piston);
 
   // invalid address
-  if (iPistonMemoryOffset<0) 
+  if (iPistonMemoryOffset == PISTON_OFFSET_ERROR) 
     return;
 
 //  debugSerial->println(iPistonMemoryOffset); 
