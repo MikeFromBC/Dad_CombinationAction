@@ -417,7 +417,8 @@ void describeDivision(Division division) {
       debugSerial->print("diOther");
       break;
       
-    default: debugSerial->print("UNKNOWN DIVISION!");
+    default: 
+      debugSerial->print("UNKNOWN DIVISION!");
   }
 }
 
@@ -910,6 +911,8 @@ void loop() {
         driver_SW_PD->send((unsigned long) 0xffffffff, 0,   // SW
                            (unsigned long) 0xffffffff, 0);  // PD
       
+        debugSerial->println();
+
         delay(STOP_DRIVE_TIME_MS);
       
         driver_CH_GT->setAllOff();
@@ -923,6 +926,8 @@ void loop() {
         driver_SW_PD->send(0, 0xffffffff,   // SW
                            0, 0xffffffff);  // PD
                            
+        debugSerial->println();
+
         delay(STOP_DRIVE_TIME_MS);
       
         driver_CH_GT->setAllOff();
