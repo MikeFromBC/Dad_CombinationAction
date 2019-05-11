@@ -616,6 +616,7 @@ int getMemoryPos() {
   return (PINC & 0x0f) ^ 0x0f;
 }
 
+
 int getMemOffset(Piston piston) {
   int iPistonMemOffset = getPistonMemOffset(piston);
 
