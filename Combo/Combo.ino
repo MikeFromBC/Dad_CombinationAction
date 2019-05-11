@@ -27,6 +27,23 @@
 
 #define SET_PISTON_INPUT_PIN  33 /* PC4 */
 
+#define TOGGLE_DEBOUNCE_TIME_MS 300
+#define RESTORE_DEBOUNCE_MS 200
+#define STORE_DEBOUNCE_MS 300
+
+#define CH_GT_STROBE_PIN 48
+#define CH_GT_CLOCK_PIN 46
+#define CH_GT_DATA_PIN 44
+#define CH_GT_SKIP_BITS 12
+
+#define SW_PD_STROBE_PIN 49
+#define SW_PD_CLOCK_PIN 47
+#define SW_PD_DATA_PIN 45
+#define SW_PD_SKIP_BITS 12
+
+#define LF 10
+#define CR 13
+
 #define GT_ROW 1
 #define SW_ROW 2
 #define CH_ROW 3
@@ -153,10 +170,9 @@ void setup() {
   // 2nd division starts at pin 41 (64 pins if all used - 40 pins allocated) / 2 = 12 upper bits to skip on lower value provided last)
   // same offset for both boards.
   // the "41" mentioned below is a port #
-  driver_SW_PD = new StopDriver(49, 47, 45, 12, 35);
-  driver_CH_GT = new StopDriver(48, 46, 44, 12, 0);  
+  driver_SW_PD = new StopDriver(SW_PD_STROBE_PIN, SW_PD_CLOCK_PIN, SW_PD_DATA_PIN, SW_PD_SKIP_BITS);
+  driver_CH_GT = new StopDriver(CH_GT_STROBE_PIN, CH_GT_CLOCK_PIN, CH_GT_DATA_PIN, CH_GT_SKIP_BITS);  
 }
-
 
 void handleCommands() { 
   while (debugSerial->available() > 0) {
@@ -164,10 +180,10 @@ void handleCommands() {
     char c = debugSerial->read();
 
     // discard unused char
-    if (c == 10)
+    if (c == LF)
       continue;
 
-    if (c == 13) {
+    if (c == CR) {
       char* pCommandBuffer = &caCommandBuffer[0];
       
       if (strcmp(pCommandBuffer, "Normal")==0) {
@@ -672,8 +688,7 @@ void storePiston(Piston piston) {
 //  debugSerial->print(" for ");
 //  describePiston(piston);
 
-  // generous debounce
-  stopDelay(300);
+  stopDelay(STORE_DEBOUNCE_MS);
 }
 
 
@@ -763,8 +778,7 @@ void restorePiston(Piston piston) {
   driver_CH_GT->setAllOff();
   driver_SW_PD->setAllOff();
 
-  // generous debounce
-  stopDelay(200);
+  stopDelay(RESTORE_DEBOUNCE_MS);
 }
 
 
