@@ -27,6 +27,8 @@
 
 #define SET_PISTON_INPUT_PIN  33 /* PC4 */
 
+#define FULL_ORGAN_OUTPUT_PIN 52
+
 #define TOGGLE_DEBOUNCE_TIME_MS 300
 #define RESTORE_DEBOUNCE_MS 200
 #define STORE_DEBOUNCE_MS 300
@@ -126,6 +128,7 @@ enum TestMode {tmNormal, tmSequential, tmCycleAll, tmCustom};
 
 TestMode eTestMode = tmNormal;  
 bool bDebug = false;
+bool m_bFullOrgan = false;
 
 void resetCommandBuffer() {
   pCommandBufferNextChar = &caCommandBuffer[0];
@@ -154,6 +157,10 @@ void setup() {
 
   pinMode(SET_PISTON_INPUT_PIN, INPUT_PULLUP);
 
+  pinMode(FULL_ORGAN_OUTPUT_PIN, OUTPUT);
+
+  setFullOrgan(false);
+  
   // lower 4 bits on port C are for the memory switch
   pinMode(37, INPUT_PULLUP);
   pinMode(36, INPUT_PULLUP);
@@ -792,6 +799,18 @@ bool getStorePistonState() {
   return bSet;
 }
 
+
+void setFullOrgan(bool bFullOrgan) {
+  m_bFullOrgan = bFullOrgan;
+  digitalWrite(FULL_ORGAN_OUTPUT_PIN, m_bFullOrgan);
+  
+  if (m_bFullOrgan)
+    debugSerial->println("fo");
+    else
+    debugSerial->println("/fo");    
+}
+
+
 void doPiston(Piston piston) {
   if (getStorePistonState()) 
     storePiston(piston);
@@ -806,9 +825,14 @@ void doPiston(Piston piston) {
       break;
       
     case pbToggleFullOrgan:
+      setFullOrgan(!m_bFullOrgan);
+
+      stopDelay(TOGGLE_DEBOUNCE_TIME_MS);
       break;
       
     case pbGenCan:
+      setFullOrgan(false);
+    
       driver_CH_GT->send(0, stopState->chior,   // CH
                          0, stopState->great);  // GT
 
