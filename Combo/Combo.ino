@@ -98,6 +98,13 @@
 #define GENERAL_MEM_PISTON_COUNT 8
 #define MEMORY_LEVEL_SIZE_BYTES ((DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * GENERAL_MEM_PISTON_COUNT))
 #define FIRST_GENERAL_MEM  (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT)
+
+#define SW_TO_GT_COUPLER_VALUE 1
+#define GT_TO_PD_COUPLER_VALUE 1
+
+#define PEDAL_COUPLER_MASK GT_TO_PD_COUPLER_VALUE
+#define CHIOR_COUPLER_MASK 0
+#define GREAT_COUPLER_MASK SW_TO_GT_COUPLER_VALUE
      
 enum Piston {pbNone,
              // divisions
@@ -820,11 +827,27 @@ void doPiston(Piston piston) {
 
   switch (piston) {
     case pbToggleSWToGTCoupler:
+      driver_CH_GT->send(stopState->chior, stopState->chior,   // CH
+                         stopState->great ^ SW_TO_GT_COUPLER_VALUE, stopState->great);  // GT
+
+      stopDelay(STOP_DRIVE_TIME_MS);
+      
+      driver_CH_GT->setAllOff();
+
+      stopDelay(TOGGLE_DEBOUNCE_TIME_MS);
       break;
       
     case pbToggleGTToPDCoupler:
-      break;
+      driver_SW_PD->send(stopState->swell, stopState->swell,   // SW
+                         stopState->pedal ^ GT_TO_PD_COUPLER_VALUE, stopState->pedal);  // PD
+
+      stopDelay(STOP_DRIVE_TIME_MS);
       
+      driver_SW_PD->setAllOff();
+
+      stopDelay(TOGGLE_DEBOUNCE_TIME_MS);
+      break;
+
     case pbToggleFullOrgan:
       setFullOrgan(!m_bFullOrgan);
 
