@@ -47,8 +47,8 @@ void MidiReader::readMessages() {
     int iBasicCommand = Serial.read();
     int iBasicCommandNibble = iBasicCommand & 0xF0;
 
-debugSerial->print("read: ");
-debugSerial->println(iBasicCommand);
+//debugSerial->print("read: ");
+//debugSerial->println(iBasicCommand);
 
     switch (iBasicCommandNibble) {
 
