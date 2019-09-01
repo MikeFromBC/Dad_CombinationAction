@@ -10,6 +10,11 @@
 #define MIDI_BOARD_SWITCH_D3  3
 #define MIDI_BOARD_SWITCH_D4  4
 
+#define FIRST_SWELL_COUPLER_STOP 31  /* in this firmware, stops start at 0; arbitrary large number past all stops & possible couplers */
+#define FIRST_PEDAL_COUPLER_STOP 9   /* in this firmware, stops start at 0 */
+#define FIRST_CHIOR_COUPLER_STOP 12  /* in this firmware, stops start at 0 */
+#define FIRST_GREAT_COUPLER_STOP 9   /* in this firmware, stops start at 0 */
+
 // RC constant of switches combined with ribbon cable capacitance isn't great; slow down our signal
 #define RIBBON_CABLE_RC_DELAY_US 100
 
@@ -98,13 +103,6 @@
 #define GENERAL_MEM_PISTON_COUNT 8
 #define MEMORY_LEVEL_SIZE_BYTES ((DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT) + (GENERAL_MEM_SIZE_BYTES * GENERAL_MEM_PISTON_COUNT))
 #define FIRST_GENERAL_MEM  (DIVISION_MEM_SIZE_BYTES * DIVISION_MEM_PISTON_COUNT)
-
-#define SW_TO_GT_COUPLER_VALUE 1
-#define GT_TO_PD_COUPLER_VALUE 1
-
-#define PEDAL_COUPLER_MASK GT_TO_PD_COUPLER_VALUE
-#define CHIOR_COUPLER_MASK 0
-#define GREAT_COUPLER_MASK SW_TO_GT_COUPLER_VALUE
      
 enum Piston {pbNone,
              // divisions
@@ -118,7 +116,6 @@ enum Piston {pbNone,
              // other
              pbToggleSWToGTCoupler, pbToggleGTToPDCoupler, pbToggleFullOrgan,
              pbGenCan};
-
 
 enum Division {diNone, diOther, diSwell, diGreat, diChior, diPedal, diGeneral};
 
@@ -184,9 +181,10 @@ void setup() {
   // 2nd division starts at pin 41 (64 pins if all used - 40 pins allocated) / 2 = 12 upper bits to skip on lower value provided last)
   // same offset for both boards.
   // the "41" mentioned below is a port #
-  driver_SW_PD = new StopDriver(SW_PD_STROBE_PIN, SW_PD_CLOCK_PIN, SW_PD_DATA_PIN, SW_PD_SKIP_BITS);
-  driver_CH_GT = new StopDriver(CH_GT_STROBE_PIN, CH_GT_CLOCK_PIN, CH_GT_DATA_PIN, CH_GT_SKIP_BITS);  
+  driver_SW_PD = new StopDriver(SW_PD_STROBE_PIN, SW_PD_CLOCK_PIN, SW_PD_DATA_PIN, SW_PD_SKIP_BITS, FIRST_SWELL_COUPLER_STOP, FIRST_PEDAL_COUPLER_STOP);
+  driver_CH_GT = new StopDriver(CH_GT_STROBE_PIN, CH_GT_CLOCK_PIN, CH_GT_DATA_PIN, CH_GT_SKIP_BITS, FIRST_CHIOR_COUPLER_STOP, FIRST_GREAT_COUPLER_STOP);  
 }
+
 
 void handleCommands() { 
   while (debugSerial->available() > 0) {
@@ -194,10 +192,10 @@ void handleCommands() {
     char c = debugSerial->read();
 
     // discard unused char
-    if (c == LF)
+    if (c == 10)
       continue;
 
-    if (c == CR) {
+    if (c == 13) {
       char* pCommandBuffer = &caCommandBuffer[0];
       
       if (strcmp(pCommandBuffer, "Normal")==0) {
@@ -447,8 +445,7 @@ void describeDivision(Division division) {
       debugSerial->print("diOther");
       break;
       
-    default: 
-      debugSerial->print("UNKNOWN DIVISION!");
+    default: debugSerial->print("UNKNOWN DIVISION!");
   }
 }
 
@@ -475,7 +472,6 @@ void describePiston(Piston piston) {
       debugSerial->println("pbSW4");
       break;
 
-
       
     case pbGT1:
       debugSerial->println("pbGT1");
@@ -494,7 +490,6 @@ void describePiston(Piston piston) {
       break;
 
       
-      
     case pbCH1:
       debugSerial->println("pbCH1");
       break;
@@ -512,7 +507,6 @@ void describePiston(Piston piston) {
       break;
 
       
-      
     case pbPD1:
       debugSerial->println("pbPD1");
       break;
@@ -527,8 +521,7 @@ void describePiston(Piston piston) {
       
     case pbPD4:
       debugSerial->println("pbPD4");
-      break;
-      
+      break;  
 
       
     case pbKGen1:
@@ -627,7 +620,7 @@ int getMemoryPos() {
 int getMemOffset(Piston piston) {
   int iPistonMemOffset = getPistonMemOffset(piston);
 
-  if (iPistonMemOffset==PISTON_OFFSET_ERROR)
+  if (iPistonMemOffset<0)
     return PISTON_OFFSET_ERROR;
     else 
     return EEPROM_MEMORY_START + (MEMORY_LEVEL_SIZE_BYTES * getMemoryPos()) + iPistonMemOffset;
@@ -638,7 +631,7 @@ void storePiston(Piston piston) {
   unsigned long iPistonMemoryOffset = getMemOffset(piston);
 
   // invalid address
-  if (iPistonMemoryOffset == PISTON_OFFSET_ERROR) 
+  if (iPistonMemoryOffset < 0) 
     return;
   
 //  debugSerial->print("Storing to ");
@@ -703,7 +696,8 @@ void storePiston(Piston piston) {
 //  debugSerial->print(" for ");
 //  describePiston(piston);
 
-  stopDelay(STORE_DEBOUNCE_MS);
+  // generous debounce
+  stopDelay(RESTORE_DEBOUNCE_MS);
 }
 
 
@@ -711,11 +705,15 @@ void restorePiston(Piston piston) {
   unsigned long iPistonMemoryOffset = getMemOffset(piston);
 
   // invalid address
-  if (iPistonMemoryOffset == PISTON_OFFSET_ERROR) 
+  if (iPistonMemoryOffset < 0) 
     return;
 
+//  debugSerial->println(); 
+//  debugSerial->print("Reading from:  "); 
 //  debugSerial->println(iPistonMemoryOffset); 
-    
+//  debugSerial->print("Piston pressed:  "); 
+//  describePiston(piston);
+   
   long iRestoreDivValue = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
 
 //  debugSerial->print("Restoring value ");
@@ -730,28 +728,32 @@ void restorePiston(Piston piston) {
 //      debugSerial->print(stopState->pedal, HEX); 
 //      debugSerial->print(")"); 
       driver_SW_PD->send(iRestoreDivValue, stopState->swell,   // SW
-                         stopState->pedal, stopState->pedal);  // PD
+                         stopState->pedal, stopState->pedal,   // PD
+                         false);  // rule:  divisionals exclude couplers
       break;
       
     case pbGT1 ... pbGT4:
 //      debugSerial->print(" G:"); 
 //      debugSerial->print(iRestoreDivValue, HEX); 
       driver_CH_GT->send(stopState->chior, stopState->chior,   // CH
-                         iRestoreDivValue, stopState->great);  // GT
+                         iRestoreDivValue, stopState->great,   // GT
+                         false);  // rule:  divisionals exclude couplers
       break;
       
     case pbCH1 ... pbCH4:
 //      debugSerial->print(" C:"); 
 //      debugSerial->print(iRestoreDivValue, HEX); 
       driver_CH_GT->send(iRestoreDivValue, stopState->chior,   // CH
-                         stopState->great, stopState->great);  // GT
+                         stopState->great, stopState->great,   // GT
+                         false);  // rule:  divisionals exclude couplers
       break;
 
     case pbPD1 ... pbPD4:
 //      debugSerial->print(" P:"); 
 //      debugSerial->print(iRestoreDivValue, HEX); 
       driver_SW_PD->send(stopState->swell, stopState->swell,   // SW
-                         iRestoreDivValue, stopState->pedal);  // PD
+                         iRestoreDivValue, stopState->pedal,   // PD
+                         false);  // rule:  divisionals exclude couplers
       break;
       
     case pbKGen1 ... pbKGen4:
@@ -767,7 +769,8 @@ void restorePiston(Piston piston) {
       iPistonMemoryOffset+=DIVISION_MEM_SIZE_BYTES;
 
       driver_CH_GT->send(iChior, stopState->chior,   // CH
-                         iGreat, stopState->great);  // GT
+                         iGreat, stopState->great,   // GT
+                         true);  // rule:  generals include couplers
 
       long iSwell = eeprom_read_dword((unsigned long*) iPistonMemoryOffset);
 //      debugSerial->print(" S:"); 
@@ -779,7 +782,8 @@ void restorePiston(Piston piston) {
 //      debugSerial->print(iPedal, HEX); 
       
       driver_SW_PD->send(iSwell, stopState->swell,   // SW
-                         iPedal, stopState->pedal);  // PD
+                         iPedal, stopState->pedal,   // PD
+                         true);  // rule:  generals include couplers
       break;
   }
 
@@ -827,41 +831,39 @@ void doPiston(Piston piston) {
 
   switch (piston) {
     case pbToggleSWToGTCoupler:
+//      debugSerial->println("SW->GT"); 
       driver_CH_GT->send(stopState->chior, stopState->chior,   // CH
-                         stopState->great ^ SW_TO_GT_COUPLER_VALUE, stopState->great);  // GT
+                         stopState->great ^ stopValue(10), stopState->great,   // GT
+                         true);
 
       stopDelay(STOP_DRIVE_TIME_MS);
       
       driver_CH_GT->setAllOff();
-
-      stopDelay(TOGGLE_DEBOUNCE_TIME_MS);
+      driver_SW_PD->setAllOff();
       break;
       
     case pbToggleGTToPDCoupler:
       driver_SW_PD->send(stopState->swell, stopState->swell,   // SW
-                         stopState->pedal ^ GT_TO_PD_COUPLER_VALUE, stopState->pedal);  // PD
+                         stopState->pedal ^ stopValue(9), stopState->pedal,   // PD
+                         true);
 
       stopDelay(STOP_DRIVE_TIME_MS);
       
+      driver_CH_GT->setAllOff();
       driver_SW_PD->setAllOff();
-
-      stopDelay(TOGGLE_DEBOUNCE_TIME_MS);
       break;
-
+      
     case pbToggleFullOrgan:
-      setFullOrgan(!m_bFullOrgan);
-
-      stopDelay(TOGGLE_DEBOUNCE_TIME_MS);
       break;
       
     case pbGenCan:
-      setFullOrgan(false);
-    
       driver_CH_GT->send(0, stopState->chior,   // CH
-                         0, stopState->great);  // GT
+                         0, stopState->great,   // GT
+                         true);
 
       driver_SW_PD->send(0, stopState->swell,   // SW
-                         0, stopState->pedal);  // PD
+                         0, stopState->pedal,   // PD
+                         true);
 
       stopDelay(STOP_DRIVE_TIME_MS);
       
@@ -878,6 +880,8 @@ void normalRun() {
   Piston piston = getPressedPiston();
 
   if (piston != pbNone) {
+    //debugSerial->print("Piston pressed:  "); 
+    //describePiston(piston);
     // debugSerial->println(piston);
     
 //    Division division = getDivision(piston);
@@ -899,7 +903,65 @@ void stopDelay(int iDelayMS) {
 }
 
 
+void stateTest() {
+  driver_CH_GT->send((unsigned long) 0xffffffff, 0,   // CH
+                     (unsigned long) 0xffffffff, 0,   // GT
+                     true);
+  driver_SW_PD->send((unsigned long) 0xffffffff, 0,   // SW
+                     (unsigned long) 0xffffffff, 0,   // PD
+                     true);
+
+  stopDelay(STOP_DRIVE_TIME_MS);
+
+  driver_CH_GT->setAllOff();
+  driver_SW_PD->setAllOff();
+
+  midiReader->readMessages();
+  stopState->debug_ShowAllStopStates("T0 activate");
+                       
+  stopDelay(500);
+
+  midiReader->readMessages();
+  stopState->debug_ShowAllStopStates("T100");
+                       
+//  stopDelay(500);
+//
+//  midiReader->readMessages();
+//  stopState->debug_ShowAllStopStates("T200");
+                       
+  stopDelay(500);
+
+  //debugSerial->print("PART OFF:  ");
+  driver_CH_GT->send(0, 0xffffffff,   // CH
+                     0, 0xffffffff,   // GT
+                     true);
+  driver_SW_PD->send(0, 0xffffffff,   // SW
+                     0, 0xffffffff,   // PD
+                     true);
+                     
+  stopDelay(STOP_DRIVE_TIME_MS);
+
+  driver_CH_GT->setAllOff();
+  driver_SW_PD->setAllOff();
+      
+  midiReader->readMessages();
+  stopState->debug_ShowAllStopStates("T0 deactivate");
+                       
+  stopDelay(500);
+
+  midiReader->readMessages();
+  stopState->debug_ShowAllStopStates("T100");
+                       
+//  stopDelay(500);
+//
+//  midiReader->readMessages();
+//  stopState->debug_ShowAllStopStates("T200");
+}
+
+
 void loop() {
+  stateTest();
+  
   while(1) {
  //   int iStop;
 
@@ -920,82 +982,80 @@ void loop() {
         iStop=1;
         
         // could use MAX_DIV_STOPS instead but we don't have that many stops
-        for (int i=0; i<15; i++) 
+        for (int i=0; i<17; i++) 
         {
-          driver_CH_GT->send(iStop, 0,       // CH
-                             iStop>>2, 0);   // GT
-          driver_SW_PD->send(iStop, 0,       // SW
-                             iStop>>2, 0);   // PD
+          driver_CH_GT->send(iStop, 0,    // CH
+                             iStop, 0,    // GT
+                             true);
+          driver_SW_PD->send(iStop, 0,    // SW
+                             iStop, 0,    // PD
+                             true);
 
-          delay(STOP_DRIVE_TIME_MS);
+          stopDelay(STOP_DRIVE_TIME_MS);
           
           driver_CH_GT->setAllOff();
           driver_SW_PD->setAllOff();
           
           iStop=iStop<<1;
-          delay(1000);
+          stopDelay(1000);
         }
         break;
 
       case tmCustom:
-        // could use MAX_DIV_STOPS instead but we don't have that many stops
-       // while (1) 
-        {
-          debugSerial->println("running1");
-
-          driver_SW_PD->send(1, 0,   // SW
-                             1, 0);  // PD
-
-          delay(STOP_DRIVE_TIME_MS);
-          
-          driver_SW_PD->setAllOff();
-          
-          delay(1000);
-
-          driver_SW_PD->send(0, 0xffffffff,   // SW
-                             0, 0xffffffff);  // PD
-
-          delay(STOP_DRIVE_TIME_MS);
-          
-          driver_SW_PD->setAllOff();
-          
-          delay(1000);
-  
-          debugSerial->println("running2");
-        }
-        break;
-        
-      case tmCycleAll: 
-        debugSerial->print("PART ON:   ");
-        //2048, 1
-        driver_CH_GT->send((unsigned long) 0xffffffff, 0,   // CH
-                           (unsigned long) 0xffffffff, 0);  // GT
-        driver_SW_PD->send((unsigned long) 0xffffffff, 0,   // SW
-                           (unsigned long) 0xffffffff, 0);  // PD
-      
-        debugSerial->println();
-
-        delay(STOP_DRIVE_TIME_MS);
-      
-        driver_CH_GT->setAllOff();
-        driver_SW_PD->setAllOff();
-                             
-        delay(1000);
+        stopDelay(1000);
       
         debugSerial->print("PART OFF:  ");
         driver_CH_GT->send(0, 0xffffffff,   // CH
-                           0, 0xffffffff);  // GT
+                           0, 0xffffffff,   // GT
+                           true);
         driver_SW_PD->send(0, 0xffffffff,   // SW
-                           0, 0xffffffff);  // PD
+                           0, 0xffffffff,   // PD
+                           true);
                            
-        debugSerial->println();
-
-        delay(STOP_DRIVE_TIME_MS);
+        stopDelay(STOP_DRIVE_TIME_MS);
       
         driver_CH_GT->setAllOff();
         driver_SW_PD->setAllOff();
       
-        delay(1000);
+        debugSerial->println();
+
+        break;
+        
+      case tmCycleAll: 
+        //debugSerial->print("PART ON:   ");
+        //2048, 1
+        driver_CH_GT->send((unsigned long) 0xffffffff, 0,   // CH
+                           (unsigned long) 0xffffffff, 0,   // GT
+                           true);
+        driver_SW_PD->send((unsigned long) 0xffffffff, 0,   // SW
+                           (unsigned long) 0xffffffff, 0,   // PD
+                           true);
+      
+        stopDelay(STOP_DRIVE_TIME_MS);
+      
+        driver_CH_GT->setAllOff();
+        driver_SW_PD->setAllOff();
+
+        debugSerial->println();
+                             
+        stopDelay(1000);
+      
+        //debugSerial->print("PART OFF:  ");
+        driver_CH_GT->send(0, 0xffffffff,   // CH
+                           0, 0xffffffff,   // GT
+                           true);
+        driver_SW_PD->send(0, 0xffffffff,   // SW
+                           0, 0xffffffff,   // PD
+                           true);
+                           
+        stopDelay(STOP_DRIVE_TIME_MS);
+      
+        driver_CH_GT->setAllOff();
+        driver_SW_PD->setAllOff();
+      
+        debugSerial->println();
+
+        stopDelay(1000);
         break;
       }
   

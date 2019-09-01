@@ -35,14 +35,8 @@ void StopState::debug_ShowStopState(char* sDiv, unsigned long iStops) {
 }
 
 
-void StopState::toggleStop(unsigned long* piDivStops, int iStop) {
-  unsigned long iStopValue = stopValue(iStop);
-  *piDivStops ^= iStopValue;
-}
-
-
-void StopState::setStop(unsigned long* piDivStops, int iStop, bool bOn) {
-  unsigned long iStopValue = stopValue(iStop);
+void StopState::setStop(unsigned long* piDivStops, int iStopNum, bool bOn) {
+  unsigned long iStopValue = stopValue(iStopNum);
   
   if (bOn)
     *piDivStops |= iStopValue;
@@ -51,49 +45,23 @@ void StopState::setStop(unsigned long* piDivStops, int iStop, bool bOn) {
 }
 
 
-// first stop is 0
-unsigned long StopState::stopValue(int iStop) {
-  return (long) 1 << iStop;
+void StopState::setSwellStop(int iStopNum, bool bOn) {
+	setStop(&swell, iStopNum, bOn);
 }
 
 
-void StopState::setSwellStop(int iStop, bool bOn) {
-	setStop(&swell, iStop, bOn);
-}
-
-
-void StopState::setGreatStop(int iStop, bool bOn)
+void StopState::setGreatStop(int iStopNum, bool bOn)
 {
-	setStop(&great, iStop, bOn);
+	setStop(&great, iStopNum, bOn);
 }
 
 
-void StopState::setChiorStop(int iStop, bool bOn) {
-	setStop(&chior, iStop, bOn);
+void StopState::setChiorStop(int iStopNum, bool bOn) {
+	setStop(&chior, iStopNum, bOn);
 }
 
 
-void StopState::setPedalStop(int iStop, bool bOn) {
-	setStop(&pedal, iStop, bOn);
-}
-
-
-void StopState::toggleSwellStop(int iStop) {
-	toggleStop(&swell, iStop);
-}
-
-
-void StopState::toggleGreatStop(int iStop) {
-	toggleStop(&great, iStop);
-}
-
-
-void StopState::toggleChiorStop(int iStop) {
-	toggleStop(&chior, iStop);
-}
-
-
-void StopState::togglePedalStop(int iStop) {
-	toggleStop(&pedal, iStop);
+void StopState::setPedalStop(int iStopNum, bool bOn) {
+	setStop(&pedal, iStopNum, bOn);
 }
 

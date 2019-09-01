@@ -22,3 +22,9 @@ void debug_ShowValue(unsigned long stops) {
 }
 
 
+// first stop is 0
+unsigned long stopValue(int iStopNum) {
+  return (unsigned long) 1 << iStopNum;
+}
+
+

@@ -3,8 +3,8 @@
 
 #define MAX_DIV_STOPS 32
 
-// 100 was a little bit too short
-#define STOP_DRIVE_TIME_MS  200
+// 70 was a little bit too short
+#define STOP_DRIVE_TIME_MS  120
 
 #define DEBUG_RX_PORT 50
 #define DEBUG_TX_PORT 51

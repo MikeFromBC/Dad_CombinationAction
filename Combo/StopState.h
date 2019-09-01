@@ -4,9 +4,7 @@
 class StopState
 {
   private:
-    unsigned long stopValue(int iStop);
-	  void toggleStop(unsigned long* piDivStops, int iStop);
-	  void setStop(unsigned long* piDivStops, int iStop, bool bOn);
+	  void setStop(unsigned long* piDivStops, int iStopNum, bool bOn);
   public:
     unsigned long swell;
     unsigned long great;
@@ -19,16 +17,11 @@ class StopState
   	void debug_ShowAllStopStates(char* sCaller);
   	void debug_ShowStopState(char* sDiv, unsigned long iStops);
   	
-  	void setSwellStop(int iStop, bool bOn);
-  	void setGreatStop(int iStop, bool bOn);
-  	void setChiorStop(int iStop, bool bOn);
-  	void setPedalStop(int iStop, bool bOn);
-  
-  	void toggleSwellStop(int iStop);
-  	void toggleGreatStop(int iStop);
-  	void toggleChiorStop(int iStop);
-  	void togglePedalStop(int iStop);
-};
+  	void setSwellStop(int iStopNum, bool bOn);
+  	void setGreatStop(int iStopNum, bool bOn);
+  	void setChiorStop(int iStopNum, bool bOn);
+  	void setPedalStop(int iStopNum, bool bOn);
+  };
 
 #endif __STOPSTATE_H__
 

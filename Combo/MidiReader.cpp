@@ -23,6 +23,12 @@
 #define SYNDYNE_SWELL_CHANNEL 3
 #define SYNDYNE_CHIOR_CHANNEL 4 
 
+#define SYNDYNE_FIRST_GREAT_COUPLER_STOP 16  /* in this firmware, stops start at 0 so 3rd 8-conductor connector begins with position 16 */
+#define SYNDYNE_FIRST_PEDAL_COUPLER_STOP 16  /* in this firmware, stops start at 0 so 3rd 8-conductor connector begins with position 16 */
+#define SYNDYNE_FIRST_CHIOR_COUPLER_STOP 16  /* in this firmware, stops start at 0 so 3rd 8-conductor connector begins with position 16 */
+
+#define SYNDYNE_CONNECTOR_CONDUCTORS 8   /* stop input board incoming connectors */
+
 extern SoftwareSerial* debugSerial;
 
 MidiReader::MidiReader(StopState* _stopState) {
@@ -47,8 +53,10 @@ void MidiReader::readMessages() {
     int iBasicCommand = Serial.read();
     int iBasicCommandNibble = iBasicCommand & 0xF0;
 
-//debugSerial->print("read: ");
-//debugSerial->println(iBasicCommand);
+    // leave these here; without it, MIDI messages are sometimes incomplete
+    debugSerial->print(millis());
+    debugSerial->print(":  read: ");
+    debugSerial->println(iBasicCommand, HEX);
 
     switch (iBasicCommandNibble) {
 
@@ -72,10 +80,10 @@ void MidiReader::readMessages() {
          
 //        debugSerial->print("Controller, chan: ");
 //        debugSerial->print(iDiv);
-//        debugSerial->print(" Data 1 (cmd): ");
-//        debugSerial->print(iCmd);
-//        debugSerial->print(" Data 2 (value): ");
-//        debugSerial->println(iStopNum);  
+////        debugSerial->print(" Data1 (cmd): ");
+////        debugSerial->print(iCmd);
+//        debugSerial->print(" Data2 (value): ");
+//        debugSerial->println(iStopNum + 1);  // show in industry standard 
 
         switch (iDiv)
         {
@@ -84,14 +92,32 @@ void MidiReader::readMessages() {
               break;
 
           case SYNDYNE_GREAT_CHANNEL:
+              // compensate:  make couplers contiguous with stops; they're not coming
+              //              from Syndyne that way because of the 8 pin connectors not
+              //              facilitating contiguous use of inputs. 
+              if (iStopNum >= SYNDYNE_FIRST_GREAT_COUPLER_STOP)
+                iStopNum-=SYNDYNE_CONNECTOR_CONDUCTORS - 1;  // only 1 of 8 was used on the previous syndyne connector
+                
               stopState->setGreatStop(iStopNum, bOn);
               break;
                 
           case SYNDYNE_PEDAL_CHANNEL:
+              // compensate:  make couplers contiguous with stops; they're not coming
+              //              from Syndyne that way because of the 8 pin connectors not
+              //              facilitating contiguous use of inputs. 
+              if (iStopNum >= SYNDYNE_FIRST_PEDAL_COUPLER_STOP)
+                iStopNum-=SYNDYNE_CONNECTOR_CONDUCTORS - 1;  // only 1 of 8 was used on the previous syndyne connector
+                
               stopState->setPedalStop(iStopNum, bOn);
               break;
                 
           case SYNDYNE_CHIOR_CHANNEL:
+              // compensate:  make couplers contiguous with stops; they're not coming
+              //              from Syndyne that way because of the 8 pin connectors not
+              //              facilitating contiguous use of inputs. 
+              if (iStopNum >= SYNDYNE_FIRST_CHIOR_COUPLER_STOP)
+                iStopNum-=SYNDYNE_CONNECTOR_CONDUCTORS - 4;    // only 4 of 8 was used on the previous syndyne connector
+                
               stopState->setChiorStop(iStopNum, bOn);
               break;
         }  // switch iDiv
